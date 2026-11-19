@@ -1,0 +1,10 @@
+# Church Library: this folder holds PHP that WordPress loads internally.
+# Nothing here is ever requested directly, so deny every request.
+Options -Indexes -ExecCGI
+<IfModule mod_authz_core.c>
+	Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+	Order allow,deny
+	Deny from all
+</IfModule>
