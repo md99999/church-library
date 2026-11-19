@@ -76,12 +76,25 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 						'musicbrainz' => __( 'MusicBrainz + Cover Art Archive: CDs, albums and recordings, by title or CD barcode, with album art. Free, no key; limited to one request per second.', 'church-library' ),
 						'hymnary'     => __( 'Hymnary.org: hymn texts by title or first line, with authors and meter. Free, no key; no cover images.', 'church-library' ),
 						'imslp'       => __( 'IMSLP (Petrucci Music Library): public-domain scores, by work title, with composer. Free, no key; no cover images.', 'church-library' ),
-						'discogs'     => __( 'Discogs: CDs, records and other music releases, by title or barcode, with cover images. Needs a free Discogs account and personal access token (Discogs > Settings > Developers). Review the Discogs API terms before turning this on.', 'church-library' ),
+						'discogs'     => __( 'Discogs: CDs, records and other music releases, by title or barcode, with cover images. Needs a free Discogs account and a personal access token. Review the Discogs API terms before turning this on.', 'church-library' ),
+					);
+					// Fixed, https-only links shown after a source's description.
+					$clib_plinks = array(
+						'discogs' => array(
+							'https://www.discogs.com/settings/developers' => __( 'Get your Discogs personal access token', 'church-library' ),
+							'https://www.discogs.com/developers' => __( 'Discogs API documentation and terms', 'church-library' ),
+						),
 					);
 					foreach ( CLIB_Lookup::providers() as $clib_pid => $clib_p ) :
 						?>
 						<label><input type="checkbox" name="clib[lookup_providers][]" value="<?php echo esc_attr( $clib_pid ); ?>" <?php checked( in_array( $clib_pid, (array) $clib_s['lookup_providers'], true ) ); ?>>
-							<?php echo esc_html( isset( $clib_pdesc[ $clib_pid ] ) ? $clib_pdesc[ $clib_pid ] : $clib_p->label() ); ?></label><br>
+							<?php echo esc_html( isset( $clib_pdesc[ $clib_pid ] ) ? $clib_pdesc[ $clib_pid ] : $clib_p->label() ); ?></label>
+						<?php if ( isset( $clib_plinks[ $clib_pid ] ) ) : ?>
+							<?php foreach ( $clib_plinks[ $clib_pid ] as $clib_lurl => $clib_ltext ) : ?>
+								&middot; <a href="<?php echo esc_url( $clib_lurl, array( 'https' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $clib_ltext ); ?> <span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'church-library' ); ?></span>&#8599;</a>
+							<?php endforeach; ?>
+						<?php endif; ?>
+						<br>
 					<?php endforeach; ?>
 					<label><?php esc_html_e( 'Discogs personal access token', 'church-library' ); ?>
 						<input type="password" name="clib[discogs_token]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_token'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>

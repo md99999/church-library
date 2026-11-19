@@ -164,6 +164,7 @@ assets/                   CSS and JavaScript
 ### 1.2.0
 - Library pages show full width without the theme sidebar by default (Library - Settings > Page layout).
 - Save / Add / Cancel buttons at the top and bottom of the item form.
+- Discogs setting links straight to the page where the personal access token is created, and to the Discogs API docs and terms.
 
 ### 1.1.0
 - Room as a managed List of Values entry linked to Building, seeded from existing data.
