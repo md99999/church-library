@@ -13,6 +13,9 @@ class CLIB_Settings {
 
 	const OPTION = 'clib_settings';
 
+	/** Word an administrator must type to enable delete-on-uninstall. */
+	const DELETE_PHRASE = 'DELETE';
+
 	public static function defaults() {
 		return array(
 			'public_access'    => 1,  // Guests may view the catalog.

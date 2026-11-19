@@ -17,6 +17,13 @@ $clib_page   = $clib_s['catalog_page_id'] ? get_post( (int) $clib_s['catalog_pag
 ?>
 <h1><?php esc_html_e( 'Library - Settings', 'church-library' ); ?></h1>
 
+<div class="clib-disclaimer">
+	<h2><?php esc_html_e( 'Disclaimer', 'church-library' ); ?></h2>
+	<p><strong><?php esc_html_e( 'You run this plugin at your own risk. The author accepts no responsibility or liability for any loss, damage or compromise arising from its use.', 'church-library' ); ?></strong>
+		<?php esc_html_e( 'Every effort has been made to write it safely, but new vulnerabilities appear in software of every kind every day and no website can be guaranteed secure. It is provided as is, without warranty of any kind, under the GNU General Public License v3 or later.', 'church-library' ); ?></p>
+	<p class="description"><?php esc_html_e( 'Test on a staging site first, keep backups of your database and files, keep WordPress, PHP, your theme and plugins up to date, and serve the site over HTTPS. Deleting items and the delete-on-uninstall option erase library data permanently and cannot be undone. Full details are in the plugin\'s README.md.', 'church-library' ); ?></p>
+</div>
+
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 	<?php wp_nonce_field( 'clib_save_settings' ); ?>
 	<input type="hidden" name="action" value="clib_save_settings">
@@ -52,7 +59,27 @@ $clib_page   = $clib_s['catalog_page_id'] ? get_post( (int) $clib_s['catalog_pag
 		</tr>
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Uninstall', 'church-library' ); ?></th>
-			<td><label><input type="checkbox" name="clib[uninstall_delete]" value="1" <?php checked( $clib_s['uninstall_delete'], 1 ); ?>> <?php esc_html_e( 'Delete all library tables and settings when the plugin is deleted (cannot be undone)', 'church-library' ); ?></label></td>
+			<td>
+				<label><input type="checkbox" id="clib-uninstall-delete" name="clib[uninstall_delete]" value="1" <?php checked( $clib_s['uninstall_delete'], 1 ); ?>> <?php esc_html_e( 'Delete all library tables and settings when the plugin is deleted (cannot be undone)', 'church-library' ); ?></label>
+				<?php if ( $clib_s['uninstall_delete'] ) : ?>
+					<div class="clib-danger">
+						<strong><?php esc_html_e( 'This is ON.', 'church-library' ); ?></strong>
+						<?php esc_html_e( 'Deleting the plugin from the Plugins screen will permanently erase every item, loan, list and the audit log. Untick and save to keep your data if you uninstall.', 'church-library' ); ?>
+					</div>
+				<?php else : ?>
+					<div class="clib-danger" id="clib-uninstall-confirm">
+						<p><strong><?php esc_html_e( 'Warning:', 'church-library' ); ?></strong>
+							<?php esc_html_e( 'with this on, deleting the plugin permanently erases the whole catalog, every loan record, all lists of values and the audit log. There is no undo: take a database backup first. You run this plugin at your own risk; the author accepts no responsibility for data loss.', 'church-library' ); ?></p>
+						<p><label><input type="checkbox" name="clib_confirm_warning" value="1"> <?php esc_html_e( 'I understand this erases all library data when the plugin is deleted.', 'church-library' ); ?></label></p>
+						<p><label>
+							<?php
+							/* translators: %s: confirmation word */
+							printf( esc_html__( 'Type %s to confirm:', 'church-library' ), '<code>' . esc_html( CLIB_Settings::DELETE_PHRASE ) . '</code>' );
+							?>
+							<input type="text" name="clib_confirm_text" maxlength="20" autocomplete="off" spellcheck="false"></label></p>
+					</div>
+				<?php endif; ?>
+			</td>
 		</tr>
 	</table>
 

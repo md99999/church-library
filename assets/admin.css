@@ -40,6 +40,10 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 .clib-matrix td, .clib-matrix th { text-align: center; }
 .clib-matrix tbody th { text-align: left; }
 
+.clib-disclaimer { background: #fff; border: 1px solid #dcdcde; border-left: 4px solid #996800; padding: 4px 16px 8px; margin: 12px 0 20px; max-width: 860px; }
+.clib-disclaimer h2 { margin-top: 8px; }
+.clib-danger { background: #fcf0f1; border-left: 4px solid #d63638; padding: 4px 12px; margin-top: 8px; max-width: 760px; }
+
 @media print {
 	#adminmenumain, #wpadminbar, .nav-tab-wrapper, .clib-filters, .clib-export, .notice, #wpfooter { display: none !important; }
 	#wpcontent { margin-left: 0 !important; }

@@ -11,6 +11,16 @@
  * License URI:       https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain:       church-library
  *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+ * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details. A copy is included in LICENSE.
+ *
+ * DISCLAIMER: you install and run this plugin at your own risk, and the author accepts no
+ * responsibility or liability for any loss, damage or compromise arising from its use. Every
+ * effort has been made to write it safely, but new vulnerabilities appear in software of every
+ * kind every day and no website can be guaranteed secure. Test on a staging site, keep backups,
+ * and keep WordPress, PHP, your theme and your plugins up to date. See README.md.
+ *
  * @package ChurchLibrary
  */
 

@@ -30,6 +30,19 @@
 		});
 	});
 
+	/* Delete-on-uninstall: reveal the warning + typed confirmation only when ticked.
+	 * The server enforces the confirmation regardless of this script. */
+	var unDel = document.getElementById('clib-uninstall-delete');
+	var unBox = document.getElementById('clib-uninstall-confirm');
+	if (unDel && unBox) {
+		var syncUninstall = function () {
+			unBox.hidden = !unDel.checked;
+			each('input', function (i) { i.required = unDel.checked; }, unBox);
+		};
+		unDel.addEventListener('change', syncUninstall);
+		syncUninstall();
+	}
+
 	/* Print button. */
 	each('.clib-print', function (b) {
 		b.addEventListener('click', function () { window.print(); });

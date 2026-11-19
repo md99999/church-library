@@ -394,10 +394,28 @@ class CLIB_Admin {
 		self::guard( 'clib_save_settings', 'manage_options' );
 		$raw      = CLIB_Util::post( 'clib', array() );
 		$settings = CLIB_Settings::sanitize( is_array( $raw ) ? $raw : array() );
+
+		// Turning on "delete all data on uninstall" needs the warning box ticked
+		// and the confirmation word typed exactly. Enforced here, not only in the browser.
+		$was_on = (int) CLIB_Settings::get( 'uninstall_delete' );
+		if ( $settings['uninstall_delete'] && ! $was_on ) {
+			$typed = CLIB_Util::text( CLIB_Util::post( 'clib_confirm_text' ), 20 );
+			if ( ! CLIB_Util::post( 'clib_confirm_warning' ) || ! hash_equals( CLIB_Settings::DELETE_PHRASE, $typed ) ) {
+				$settings['uninstall_delete'] = 0;
+				/* translators: %s: confirmation word */
+				self::notice( sprintf( __( 'Delete-on-uninstall was NOT turned on: tick the warning box and type %s to confirm. Your other settings were saved.', 'church-library' ), CLIB_Settings::DELETE_PHRASE ), 'error' );
+			} else {
+				CLIB_Audit::log( 'uninstall_delete_on', 'settings', 0, 'Delete all data on uninstall enabled' );
+				self::notice( __( 'Delete-on-uninstall is ON. Deleting the plugin will now permanently erase all library data.', 'church-library' ), 'warning' );
+			}
+		} elseif ( ! $settings['uninstall_delete'] && $was_on ) {
+			CLIB_Audit::log( 'uninstall_delete_off', 'settings', 0, 'Delete all data on uninstall disabled' );
+		}
+
 		CLIB_Settings::save( $settings );
 		$matrix = CLIB_Util::post( 'perm', array() );
 		CLIB_Perms::save_matrix( is_array( $matrix ) ? $matrix : array() );
-		CLIB_Audit::log( 'settings', 'settings', 0, 'public_access=' . $settings['public_access'] );
+		CLIB_Audit::log( 'settings', 'settings', 0, 'public_access=' . $settings['public_access'] . ' uninstall_delete=' . $settings['uninstall_delete'] );
 		self::notice( __( 'Settings saved.', 'church-library' ) );
 		self::go( 'clib-settings' );
 	}

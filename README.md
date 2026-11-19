@@ -2,6 +2,14 @@
 
 A WordPress plugin for running a library shared by several churches: a catalog of books, music, DVDs, props and anything else you lend out, with check out / check in, shelf locations, reports, CSV import and role-based permissions.
 
+## Disclaimer: install and run at your own risk
+
+**You install and run this plugin entirely at your own risk. The author accepts no responsibility or liability for any loss, damage or compromise that results from using it.**
+
+Every effort has been made to write it safely (see *Security* below), but new vulnerabilities are discovered in software of every kind every day, and no website can be guaranteed secure. The plugin is provided as is, without warranty of any kind, under the GNU General Public License v3 or later. Test on a staging site first, keep backups of your database and files, keep WordPress, PHP, your theme and plugins up to date, and serve the site over HTTPS.
+
+Deleting items and the *Delete all library data on uninstall* option erase data permanently and cannot be undone. Turning that option on requires ticking a warning box and typing `DELETE`; the server rejects the change otherwise.
+
 ## Features
 
 - **Catalog** with title, description, notes, creator/author, publisher, media type, music sub-category and difficulty (music only), condition, liturgical use, classification, owned by, ISBN/identifier, barcode, call #, church, building, room, location ID, number of copies, storage status, inventory notes, cost, acquired date and an image.
@@ -93,7 +101,7 @@ The plugin was built to be safe on a public church website:
 - **Race conditions**: Item IDs are allocated atomically (`LAST_INSERT_ID(expr)`), and check-outs lock the item row so two desks cannot lend the last copy at the same time.
 - **Direct access**: every PHP file exits unless loaded by WordPress, every folder has a "silence is golden" `index.php`, and `.htaccess` files deny direct requests to PHP and other non-asset files on Apache.
 - **Audit log** with user, time and IP (`REMOTE_ADDR` only, as forwarded headers can be spoofed).
-- **Uninstall** removes capabilities. It only drops tables if *Delete all library data on uninstall* is ticked.
+- **Uninstall** removes capabilities. It only drops tables if *Delete all library data on uninstall* is ticked, which an administrator can only turn on by ticking a warning box and typing `DELETE` (checked on the server behind a nonce and `manage_options`, and recorded in the audit log).
 
 ### nginx
 
