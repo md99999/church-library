@@ -23,6 +23,21 @@ $clib_lov_link = function ( $list ) {
 ?>
 <form method="post" action="<?php echo esc_url( $clib_form_url ); ?>" enctype="multipart/form-data" class="clib-item-form" id="clib-item-form">
 	<?php echo $clib_form_hidden; // phpcs:ignore WordPress.Security.EscapeOutput -- built from nonce fields and esc_attr by the caller. ?>
+	<?php
+	// Save buttons are shown above and below the form (long form: no scrolling to save).
+	$clib_submit_row = function ( $clib_where ) use ( $clib_item, $clib_cancel_url ) {
+		?>
+		<p class="submit clib-submit <?php echo esc_attr( $clib_where ); ?>">
+			<button type="submit" class="button button-primary"><?php echo $clib_item ? esc_html__( 'Save Item', 'church-library' ) : esc_html__( 'Add Item', 'church-library' ); ?></button>
+			<?php if ( ! $clib_item ) : ?>
+				<button type="submit" class="button" name="add_another" value="1"><?php esc_html_e( 'Add and start another', 'church-library' ); ?></button>
+			<?php endif; ?>
+			<a class="button-link" href="<?php echo esc_url( $clib_cancel_url ); ?>"><?php esc_html_e( 'Cancel', 'church-library' ); ?></a>
+		</p>
+		<?php
+	};
+	$clib_submit_row( 'clib-submit-top' );
+	?>
 	<input type="hidden" name="id" value="<?php echo esc_attr( $clib_id ); ?>">
 	<input type="hidden" name="cover_provider" id="clib-cover-provider" value="">
 	<input type="hidden" name="cover_ref" id="clib-cover-ref" value="">
@@ -179,11 +194,5 @@ $clib_lov_link = function ( $list ) {
 		</div>
 	</div>
 
-	<p class="submit">
-		<button type="submit" class="button button-primary"><?php echo $clib_item ? esc_html__( 'Save Item', 'church-library' ) : esc_html__( 'Add Item', 'church-library' ); ?></button>
-		<?php if ( ! $clib_item ) : ?>
-			<button type="submit" class="button" name="add_another" value="1"><?php esc_html_e( 'Add and start another', 'church-library' ); ?></button>
-		<?php endif; ?>
-		<a class="button-link" href="<?php echo esc_url( $clib_cancel_url ); ?>"><?php esc_html_e( 'Cancel', 'church-library' ); ?></a>
-	</p>
+	<?php $clib_submit_row( 'clib-submit-bottom' ); ?>
 </form>

@@ -138,6 +138,7 @@ class CLIB_Pages {
 			}
 		}
 		update_option( self::OPTION, $ids, false );
+		CLIB_Layout::apply_templates();
 		if ( ! empty( $ids['catalog'] ) ) {
 			CLIB_Settings::set( 'catalog_page_id', (int) $ids['catalog'] );
 		}

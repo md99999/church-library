@@ -56,3 +56,5 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 	#adminmenumain, #wpadminbar, .nav-tab-wrapper, .clib-filters, .clib-export, .notice, #wpfooter { display: none !important; }
 	#wpcontent { margin-left: 0 !important; }
 }
+
+.clib-item-form .clib-submit-top { margin-top: 0; padding-top: 0; }

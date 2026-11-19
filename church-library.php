@@ -49,6 +49,7 @@ require_once CLIB_DIR . 'includes/class-clib-lookup.php';
 require_once CLIB_DIR . 'includes/class-clib-lookup-music.php';
 require_once CLIB_DIR . 'includes/class-clib-import.php';
 require_once CLIB_DIR . 'includes/class-clib-privacy.php';
+require_once CLIB_DIR . 'includes/class-clib-layout.php';
 require_once CLIB_DIR . 'includes/class-clib-bulk.php';
 require_once CLIB_DIR . 'includes/class-clib-export.php';
 require_once CLIB_DIR . 'public/class-clib-public.php';
@@ -64,6 +65,7 @@ add_action( 'plugins_loaded', array( 'CLIB_DB', 'maybe_upgrade' ) );
 add_action( 'init', array( 'CLIB_Public', 'init' ) );
 add_action( 'init', array( 'CLIB_Lookup', 'init' ) );
 CLIB_Privacy::init();
+CLIB_Layout::init();
 
 if ( is_admin() ) {
 	add_action( 'init', array( 'CLIB_Admin', 'init' ) );

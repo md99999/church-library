@@ -344,6 +344,7 @@ class CLIB_Admin {
 		}
 
 		CLIB_Settings::save( $settings );
+		CLIB_Layout::apply_templates();
 		$matrix = CLIB_Util::post( 'perm', array() );
 		CLIB_Perms::save_matrix( is_array( $matrix ) ? $matrix : array() );
 		CLIB_Audit::log( 'settings', 'settings', 0, 'public_access=' . $settings['public_access'] . ' uninstall_delete=' . $settings['uninstall_delete'] );

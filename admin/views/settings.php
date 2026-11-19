@@ -44,6 +44,20 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 			<td><label><input type="checkbox" name="clib[show_borrowers]" value="1" <?php checked( $clib_s['show_borrowers'], 1 ); ?>> <?php esc_html_e( 'Show "Checked Out By" names to logged-in view-only users (staff always see them; guests never do)', 'church-library' ); ?></label></td>
 		</tr>
 		<tr>
+			<th scope="row"><?php esc_html_e( 'Page layout', 'church-library' ); ?></th>
+			<td><label><input type="checkbox" name="clib[full_width]" value="1" <?php checked( $clib_s['full_width'], 1 ); ?>> <?php esc_html_e( 'Show the "Library - ..." pages full width, without the theme sidebar.', 'church-library' ); ?></label>
+				<p class="description"><?php
+				$clib_tpl = CLIB_Layout::theme_template();
+				if ( '' !== $clib_tpl ) {
+					/* translators: %s: page template file */
+					echo esc_html( sprintf( __( 'Your theme has a full-width page template (%s); library pages that still use the default template are switched to it. A template you pick by hand in the page editor is never changed.', 'church-library' ), $clib_tpl ) );
+				} else {
+					esc_html_e( 'Your theme has no full-width page template, so the plugin hides sidebar widget areas and widens the content on library pages instead. If a sidebar still shows, pick a full-width template for the page in the page editor.', 'church-library' );
+				}
+				?></p>
+			</td>
+		</tr>
+		<tr>
 			<th scope="row"><label for="clib-loan-days"><?php esc_html_e( 'Default loan period (days)', 'church-library' ); ?></label></th>
 			<td><input type="number" id="clib-loan-days" name="clib[loan_days]" min="1" max="365" value="<?php echo esc_attr( $clib_s['loan_days'] ); ?>" class="small-text"></td>
 		</tr>
