@@ -24,6 +24,7 @@ class CLIB_Settings {
 			'lookup_enabled'   => 1,  // Title / ISBN lookup master switch.
 			'lookup_providers' => array( 'openlibrary', 'musicbrainz', 'hymnary', 'imslp' ),
 			'discogs_token'    => '',
+			'full_width'       => 1,  // Library pages without the theme sidebar.
 			'show_borrowers'   => 0,  // Show "checked out by" names to view-only users.
 			'uninstall_delete' => 0,  // Drop tables on uninstall.
 			'catalog_page_id'  => 0,
@@ -57,6 +58,7 @@ class CLIB_Settings {
 		$out['public_access']    = empty( $raw['public_access'] ) ? 0 : 1;
 		$out['lookup_enabled']   = empty( $raw['lookup_enabled'] ) ? 0 : 1;
 		$out['show_borrowers']   = empty( $raw['show_borrowers'] ) ? 0 : 1;
+		$out['full_width']       = empty( $raw['full_width'] ) ? 0 : 1;
 		$out['uninstall_delete'] = empty( $raw['uninstall_delete'] ) ? 0 : 1;
 		$out['loan_days']        = CLIB_Util::int( isset( $raw['loan_days'] ) ? $raw['loan_days'] : 21, 1, 365 );
 		$out['per_page']         = CLIB_Util::int( isset( $raw['per_page'] ) ? $raw['per_page'] : 25, 5, 200 );

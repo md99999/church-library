@@ -88,3 +88,5 @@
 }
 .clib button:focus, .clib .clib-btn:focus { transform: none !important; outline: 2px solid #2271b1; outline-offset: 2px; }
 .clib .clib-form p, .clib .clib-field { margin: 0 0 14px; }
+
+.clib .clib-submit-top, .clib-item-form .clib-submit-top { margin-top: 0; margin-bottom: 16px; }
