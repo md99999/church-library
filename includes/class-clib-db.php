@@ -231,6 +231,39 @@ class CLIB_DB {
 				$order += 10;
 			}
 		}
+
+		// Added in DB version 2: music classifications. Each one is added only if a
+		// classification with that label does not exist yet, so admin edits survive.
+		$music = array(
+			'Music - Anthem',
+			'Music - Hymn',
+			'Music - Hymnal',
+			'Music - Choral',
+			'Music - Cantata',
+			'Music - Oratorio',
+			'Music - Handbell',
+			'Music - Instrumental',
+			'Music - Organ',
+			'Music - Piano',
+			'Music - Vocal Solo',
+			'Music - Praise & Worship',
+			'Music - Gospel',
+			'Music - Contemporary Christian',
+			"Music - Children's Choir",
+		);
+		$order = 500;
+		foreach ( $music as $label ) {
+			if ( ! CLIB_LOV::find_by_label( 'classification', $label ) ) {
+				CLIB_LOV::insert(
+					array(
+						'list_type'  => 'classification',
+						'label'      => $label,
+						'sort_order' => $order,
+					)
+				);
+			}
+			$order += 10;
+		}
 	}
 
 	/** .htaccess for uploads/church-library: images only, never execute scripts. */
