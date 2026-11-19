@@ -1,0 +1,46 @@
+/* Church Library admin styles. */
+.clib-wrap .clib-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 12px 0; }
+.clib-wrap .clib-count { color: #646970; margin: 4px 0 8px; }
+.clib-wrap .clib-col-img { width: 44px; }
+.clib-wrap .clib-col-img img { width: 40px; height: 40px; object-fit: cover; border-radius: 3px; }
+
+.clib-status { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: #dcfce7; color: #14532d; }
+.clib-status-checked_out { background: #fef3c7; color: #78350f; }
+.clib-status-not_available { background: #fee2e2; color: #7f1d1d; }
+tr.clib-overdue td { background: #fff1f1 !important; }
+
+.clib-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px; }
+.clib-section { background: #fff; border: 1px solid #dcdcde; padding: 8px 20px 16px; border-radius: 4px; }
+.clib-field { margin: 0 0 12px; }
+.clib-field label { display: block; font-weight: 600; margin-bottom: 3px; }
+.clib-field input[type=text], .clib-field input[type=number], .clib-field select, .clib-field textarea { width: 100%; max-width: 100%; }
+.clib-field input[type=number] { max-width: 120px; }
+.clib-lookup-row { display: flex; gap: 6px; }
+.clib-lookup-row input { flex: 1; }
+.clib-lookup-results { border: 1px solid #c3c4c7; background: #f6f7f7; padding: 8px 12px; margin: -4px 0 12px; max-height: 360px; overflow: auto; }
+.clib-lookup-results ul { margin: 0; }
+.clib-results li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid #dcdcde; }
+.clib-results li > div { flex: 1; }
+.clib-results img { width: 36px; height: auto; }
+.clib-cover-preview img { max-width: 150px; height: auto; border: 1px solid #dcdcde; }
+
+.clib-item-layout { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.clib-item-main { flex: 1 1 560px; min-width: 0; }
+.clib-item-side img { max-width: 300px; height: auto; border: 1px solid #dcdcde; }
+.clib-fields th { width: 200px; }
+.clib-text { background: #fff; border: 1px solid #dcdcde; padding: 4px 12px; }
+.clib-inline { display: flex; gap: 4px; flex-wrap: wrap; }
+.clib-checkout-form { background: #fff; border: 1px solid #dcdcde; padding: 4px 16px 12px; max-width: 480px; }
+.clib-delete-form { margin-top: 32px; }
+
+.clib-desk { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 24px; }
+.clib-export { margin: 12px 0; display: flex; gap: 6px; }
+.clib-lov-actions { display: flex; gap: 6px; }
+.clib-lov-actions form { margin: 0; }
+.clib-matrix td, .clib-matrix th { text-align: center; }
+.clib-matrix tbody th { text-align: left; }
+
+@media print {
+	#adminmenumain, #wpadminbar, .nav-tab-wrapper, .clib-filters, .clib-export, .notice, #wpfooter { display: none !important; }
+	#wpcontent { margin-left: 0 !important; }
+}

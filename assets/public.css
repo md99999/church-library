@@ -1,0 +1,19 @@
+/* Church Library front-end catalog. Inherits the theme's fonts and colours. */
+.clib .clib-search { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.clib .clib-search input[type=search] { flex: 1 1 220px; }
+.clib .clib-count { opacity: .75; }
+.clib .clib-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.clib .clib-card a { display: flex; gap: 10px; padding: 10px; border: 1px solid rgba(0,0,0,.12); border-radius: 6px; text-decoration: none; color: inherit; height: 100%; box-sizing: border-box; }
+.clib .clib-card a:hover, .clib .clib-card a:focus { border-color: currentColor; }
+.clib .clib-thumb { flex: 0 0 60px; }
+.clib .clib-thumb img { width: 60px; height: 80px; object-fit: cover; }
+.clib .clib-card-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.clib .clib-creator, .clib .clib-meta { font-size: .875em; opacity: .8; }
+.clib .clib-status { align-self: flex-start; font-size: .75em; padding: 1px 8px; border-radius: 10px; background: #dcfce7; color: #14532d; margin-top: 4px; }
+.clib .clib-status-checked_out { background: #fef3c7; color: #78350f; }
+.clib .clib-status-not_available { background: #fee2e2; color: #7f1d1d; }
+.clib .clib-item-head { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+.clib .clib-item-image img { max-width: 260px; height: auto; }
+.clib .clib-fields th { text-align: left; padding-right: 16px; white-space: nowrap; vertical-align: top; }
+.clib .clib-pages { margin-top: 16px; }
+.clib .clib-pages .page-numbers { padding: 2px 8px; }

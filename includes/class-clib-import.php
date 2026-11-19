@@ -1,0 +1,261 @@
+<?php
+/**
+ * CSV import (e.g. the "Library List of Books" spreadsheet saved as CSV).
+ *
+ * @package ChurchLibrary
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+class CLIB_Import {
+
+	const MAX_BYTES = 5242880;
+	const MAX_ROWS  = 5000;
+
+	/** Header aliases (lower-case, punctuation stripped) => field. */
+	public static function header_map() {
+		return array(
+			'title'           => 'title',
+			'authorsname'     => 'creator',
+			'author'          => 'creator',
+			'authors'         => 'creator',
+			'creator'         => 'creator',
+			'creatorauthor'   => 'creator',
+			'publisher'       => 'publisher',
+			'description'     => 'description',
+			'notes'           => 'notes',
+			'barcode'         => 'barcode',
+			'call'            => 'call_number',
+			'callnumber'      => 'call_number',
+			'classification'  => 'classification',
+			'cost'            => 'cost',
+			'costin2007'      => 'cost',
+			'price'           => 'cost',
+			'isbn'            => 'identifier',
+			'identifier'      => 'identifier',
+			'isbnoridentifier' => 'identifier',
+			'mediatype'       => 'media_type',
+			'church'          => 'church',
+			'churchname'      => 'church',
+			'building'        => 'building',
+			'room'            => 'room',
+			'location'        => 'location_code',
+			'locationid'      => 'location_code',
+			'copies'          => 'copies',
+			'numberofcopies'  => 'copies',
+			'condition'       => 'item_condition',
+			'ownedby'         => 'owned_by',
+			'liturgicaluse'   => 'liturgical_use',
+			'inventorynotes'  => 'inventory_notes',
+		);
+	}
+
+	private static function norm_header( $h ) {
+		return preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $h ) );
+	}
+
+	private static function to_utf8( $s ) {
+		$s = (string) $s;
+		if ( '' === $s || seems_utf8( $s ) ) {
+			return $s;
+		}
+		return function_exists( 'mb_convert_encoding' ) ? mb_convert_encoding( $s, 'UTF-8', 'Windows-1252' ) : wp_check_invalid_utf8( $s, true );
+	}
+
+	/**
+	 * Run an import from the uploaded file field.
+	 *
+	 * @param string $field    $_FILES key.
+	 * @param array  $defaults media_type_id, church_id, building_id, skip_dupes, add_classes, dry_run.
+	 * @return array|WP_Error  Summary.
+	 */
+	public static function run( $field, array $defaults ) {
+		if ( empty( $_FILES[ $field ] ) || ! is_array( $_FILES[ $field ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- verified by caller.
+			return new WP_Error( 'clib_import', __( 'Choose a CSV file.', 'church-library' ) );
+		}
+		$file = $_FILES[ $field ]; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		if ( ! isset( $file['error'] ) || is_array( $file['error'] ) || UPLOAD_ERR_OK !== (int) $file['error'] ) {
+			return new WP_Error( 'clib_import', __( 'The upload failed.', 'church-library' ) );
+		}
+		if ( empty( $file['tmp_name'] ) || ! is_uploaded_file( $file['tmp_name'] ) ) {
+			return new WP_Error( 'clib_import', __( 'Invalid upload.', 'church-library' ) );
+		}
+		if ( (int) $file['size'] <= 0 || (int) $file['size'] > self::MAX_BYTES ) {
+			return new WP_Error( 'clib_import', __( 'CSV files must be 5 MB or smaller.', 'church-library' ) );
+		}
+		$name = isset( $file['name'] ) ? (string) $file['name'] : '';
+		if ( 'csv' !== strtolower( pathinfo( $name, PATHINFO_EXTENSION ) ) ) {
+			return new WP_Error( 'clib_import', __( 'Only .csv files can be imported. In Excel use File > Save As > CSV UTF-8.', 'church-library' ) );
+		}
+		// Reject binary content (e.g. an .xlsx renamed to .csv).
+		$head = file_get_contents( $file['tmp_name'], false, null, 0, 4096 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( false === $head || false !== strpos( $head, "\0" ) || 0 === strpos( $head, 'PK' ) ) {
+			return new WP_Error( 'clib_import', __( 'That file is not a plain-text CSV.', 'church-library' ) );
+		}
+
+		return self::run_file( $file['tmp_name'], $name, $defaults );
+	}
+
+	/**
+	 * Import from a local file path (already validated as an upload).
+	 * The temp file is read in place; it is never moved into a web-accessible folder.
+	 */
+	public static function run_file( $path, $name, array $defaults ) {
+		$fh = fopen( $path, 'r' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		if ( ! $fh ) {
+			return new WP_Error( 'clib_import', __( 'Could not read the file.', 'church-library' ) );
+		}
+
+		$header = fgetcsv( $fh, 0, ',', '"', '\\' );
+		if ( ! is_array( $header ) ) {
+			fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			return new WP_Error( 'clib_import', __( 'The file is empty.', 'church-library' ) );
+		}
+		$header[0] = preg_replace( '/^\xEF\xBB\xBF/', '', (string) $header[0] );
+		$map       = self::header_map();
+		$cols      = array();
+		foreach ( $header as $idx => $h ) {
+			$key = self::norm_header( $h );
+			if ( isset( $map[ $key ] ) && ! in_array( $map[ $key ], $cols, true ) ) {
+				$cols[ $idx ] = $map[ $key ];
+			}
+		}
+		if ( ! in_array( 'title', $cols, true ) ) {
+			fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+			return new WP_Error( 'clib_import', __( 'The CSV needs a "Title" column.', 'church-library' ) );
+		}
+
+		$summary = array(
+			'rows'     => 0,
+			'imported' => 0,
+			'skipped'  => 0,
+			'errors'   => array(),
+			'dry_run'  => ! empty( $defaults['dry_run'] ),
+			'columns'  => array_values( $cols ),
+		);
+
+		$line                = 1;
+		CLIB_Items::$quiet   = true;
+		while ( ( $row = fgetcsv( $fh, 0, ',', '"', '\\' ) ) !== false ) { // phpcs:ignore WordPress.CodeAnalysis.AssignmentInCondition.FoundInWhileCondition
+			++$line;
+			if ( $summary['rows'] >= self::MAX_ROWS ) {
+				/* translators: %d: max rows */
+				$summary['errors'][] = sprintf( __( 'Stopped after %d rows.', 'church-library' ), self::MAX_ROWS );
+				break;
+			}
+			if ( ! is_array( $row ) || ( 1 === count( $row ) && ( null === $row[0] || '' === trim( (string) $row[0] ) ) ) ) {
+				continue;
+			}
+			++$summary['rows'];
+
+			$raw = array();
+			foreach ( $cols as $idx => $fieldname ) {
+				$raw[ $fieldname ] = isset( $row[ $idx ] ) ? self::to_utf8( $row[ $idx ] ) : '';
+			}
+			$result = self::import_row( $raw, $defaults );
+			if ( is_wp_error( $result ) ) {
+				++$summary['skipped'];
+				if ( count( $summary['errors'] ) < 50 ) {
+					/* translators: 1: line number, 2: error */
+					$summary['errors'][] = sprintf( __( 'Line %1$d: %2$s', 'church-library' ), $line, $result->get_error_message() );
+				}
+			} elseif ( 'dupe' === $result ) {
+				++$summary['skipped'];
+			} else {
+				++$summary['imported'];
+			}
+		}
+		fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		CLIB_Items::$quiet = false;
+
+		if ( ! $summary['dry_run'] ) {
+			CLIB_Audit::log( 'import', 'item', 0, sprintf( '%s: %d imported, %d skipped', sanitize_file_name( $name ), $summary['imported'], $summary['skipped'] ) );
+		}
+		return $summary;
+	}
+
+	/** @return int|string|WP_Error item id, 'dupe' or error. */
+	private static function import_row( array $raw, array $defaults ) {
+		global $wpdb;
+		// CSV values are not slashed, but the validators unslash; add slashes so content round-trips.
+		$in = array();
+
+		$media = (int) $defaults['media_type_id'];
+		if ( ! empty( $raw['media_type'] ) ) {
+			$m = CLIB_LOV::find_by_label( 'media_type', CLIB_Util::cap( trim( $raw['media_type'] ), 100 ) );
+			if ( $m ) {
+				$media = (int) $m->id;
+			}
+		}
+		$in['media_type_id'] = $media;
+
+		$church = (int) $defaults['church_id'];
+		if ( ! empty( $raw['church'] ) ) {
+			$c = CLIB_LOV::find_by_label( 'church', CLIB_Util::cap( trim( $raw['church'] ), 100 ) );
+			if ( $c ) {
+				$church = (int) $c->id;
+			}
+		}
+		$in['church_id'] = $church;
+
+		$building = (int) $defaults['building_id'];
+		if ( ! empty( $raw['building'] ) ) {
+			$b = CLIB_LOV::find_by_label( 'building', CLIB_Util::cap( trim( $raw['building'] ), 100 ) );
+			if ( $b ) {
+				$building = (int) $b->id;
+			}
+		}
+		$in['building_id'] = $building;
+
+		if ( ! empty( $raw['classification'] ) ) {
+			$label = CLIB_Util::text( wp_slash( $raw['classification'] ), 100 );
+			$cl    = CLIB_LOV::find_by_label( 'classification', $label );
+			if ( ! $cl && ! empty( $defaults['add_classes'] ) && '' !== $label && empty( $defaults['dry_run'] ) ) {
+				$new_id = CLIB_LOV::insert(
+					array(
+						'list_type'  => 'classification',
+						'label'      => $label,
+						'sort_order' => 1000,
+					)
+				);
+				$in['classification_id'] = $new_id;
+			} elseif ( $cl ) {
+				$in['classification_id'] = (int) $cl->id;
+			}
+		}
+
+		if ( isset( $raw['item_condition'] ) ) {
+			$in['item_condition'] = strtolower( trim( $raw['item_condition'] ) );
+		}
+
+		foreach ( array( 'title', 'creator', 'publisher', 'description', 'notes', 'barcode', 'call_number', 'identifier', 'room', 'location_code', 'copies', 'owned_by', 'liturgical_use', 'inventory_notes', 'cost' ) as $k ) {
+			if ( isset( $raw[ $k ] ) ) {
+				$in[ $k ] = wp_slash( $raw[ $k ] );
+			}
+		}
+
+		$data = CLIB_Items::validate( $in );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+
+		if ( ! empty( $defaults['skip_dupes'] ) ) {
+			$t = CLIB_DB::table( 'items' );
+			if ( '' !== $data['barcode'] ) {
+				$dupe = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $t WHERE barcode = %s LIMIT 1", $data['barcode'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			} else {
+				$dupe = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $t WHERE title = %s AND creator = %s LIMIT 1", $data['title'], $data['creator'] ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			}
+			if ( $dupe ) {
+				return 'dupe';
+			}
+		}
+
+		if ( ! empty( $defaults['dry_run'] ) ) {
+			return 0;
+		}
+		return CLIB_Items::create( $data );
+	}
+}

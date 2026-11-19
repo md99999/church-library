@@ -1,0 +1,15 @@
+# Only static CSS / JS / images are served from this folder.
+Options -Indexes -ExecCGI
+<IfModule mod_authz_core.c>
+	Require all denied
+	<FilesMatch "\.(?i:css|js|png|jpe?g|gif|webp|svg)$">
+		Require all granted
+	</FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+	Order deny,allow
+	Deny from all
+	<FilesMatch "\.(?i:css|js|png|jpe?g|gif|webp|svg)$">
+		Allow from all
+	</FilesMatch>
+</IfModule>

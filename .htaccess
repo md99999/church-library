@@ -1,0 +1,28 @@
+# Church Library plugin hardening (Apache). Every PHP file in this plugin is
+# loaded by WordPress, never requested directly, so direct requests are denied.
+# nginx ignores this file; see README.md for the equivalent nginx rules.
+Options -Indexes
+
+<FilesMatch "\.(?i:php\d?|phtml|phar|inc|sql|md|txt|log|json|lock|xml|yml|yaml|dist|sh|ini|bak)$">
+	<IfModule mod_authz_core.c>
+		Require all denied
+	</IfModule>
+	<IfModule !mod_authz_core.c>
+		Order allow,deny
+		Deny from all
+	</IfModule>
+</FilesMatch>
+
+<FilesMatch "^\.">
+	<IfModule mod_authz_core.c>
+		Require all denied
+	</IfModule>
+	<IfModule !mod_authz_core.c>
+		Order allow,deny
+		Deny from all
+	</IfModule>
+</FilesMatch>
+
+<IfModule mod_headers.c>
+	Header set X-Content-Type-Options nosniff
+</IfModule>
