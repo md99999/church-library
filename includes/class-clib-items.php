@@ -383,6 +383,12 @@ class CLIB_Items {
 		$join = "LEFT JOIN $lov mt ON mt.id = i.media_type_id LEFT JOIN $lov ch ON ch.id = i.church_id LEFT JOIN $lov bl ON bl.id = i.building_id";
 		$wsql = implode( ' AND ', $where );
 
+		if ( ! empty( $args['ids_only'] ) ) {
+			$limit   = max( 1, min( 100000, (int) $args['ids_only'] ) );
+			$ids_sql = "SELECT i.id FROM $items i $join WHERE $wsql ORDER BY i.id ASC LIMIT %d";
+			return array_map( 'intval', $wpdb->get_col( $wpdb->prepare( $ids_sql, array_merge( $vals, array( $limit ) ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		}
+
 		$count_sql = "SELECT COUNT(*) FROM $items i $join WHERE $wsql";
 		$total     = (int) ( $vals ? $wpdb->get_var( $wpdb->prepare( $count_sql, $vals ) ) : $wpdb->get_var( $count_sql ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 

@@ -44,6 +44,12 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 .clib-disclaimer h2 { margin-top: 8px; }
 .clib-danger { background: #fcf0f1; border-left: 4px solid #d63638; padding: 4px 12px; margin-top: 8px; max-width: 760px; }
 
+.clib-bulk { background: #fff; border: 1px solid #dcdcde; padding: 4px 14px 8px; margin: 0 0 12px; }
+.clib-bulk legend { font-weight: 600; padding: 0 4px; }
+.clib-bulk-scope label, .clib-bulk-fields label { margin-right: 14px; display: inline-block; }
+.clib-bulk-fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.clib-bulk-confirm { max-width: 760px; padding: 8px 16px; }
+
 @media print {
 	#adminmenumain, #wpadminbar, .nav-tab-wrapper, .clib-filters, .clib-export, .notice, #wpfooter { display: none !important; }
 	#wpcontent { margin-left: 0 !important; }

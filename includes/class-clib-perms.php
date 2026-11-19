@@ -25,6 +25,7 @@ class CLIB_Perms {
 			'clib_reports'      => __( 'View reports', 'church-library' ),
 			'clib_import'       => __( 'Import CSV', 'church-library' ),
 			'clib_manage_lists' => __( 'Manage lists of values', 'church-library' ),
+			'clib_bulk_edit'    => __( 'Bulk edit locations', 'church-library' ),
 		);
 	}
 

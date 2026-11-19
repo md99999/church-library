@@ -32,6 +32,7 @@ class CLIB_Admin {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
+		add_action( 'admin_init', array( 'CLIB_Perms', 'ensure_admin_caps' ) ); // Administrators always hold every library capability, including ones added in updates.
 
 		$actions = array(
 			'clib_save_item',
@@ -42,6 +43,9 @@ class CLIB_Admin {
 			'clib_delete_lov',
 			'clib_save_settings',
 			'clib_setup_pages',
+			'clib_bulk_prepare',
+			'clib_bulk_apply',
+			'clib_bulk_cancel',
 			'clib_export',
 			'clib_import',
 		);
@@ -352,6 +356,35 @@ class CLIB_Admin {
 		/* translators: 1: created 2: renamed */
 		self::notice( sprintf( __( 'Library pages checked: %1$d created, %2$d renamed. Existing page content was not changed.', 'church-library' ), $created, $renamed ) );
 		self::go( 'clib-settings' );
+	}
+
+	public static function handle_bulk_prepare() {
+		self::guard( 'clib_bulk_prepare', 'clib_bulk_edit' );
+		$token = CLIB_Bulk::prepare( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput -- guard() verified; validate() sanitizes every field.
+		if ( is_wp_error( $token ) ) {
+			self::notice_error( $token );
+			self::go( 'clib-catalog' );
+		}
+		self::go( 'clib-catalog', array( 'bulk' => $token ) );
+	}
+
+	public static function handle_bulk_apply() {
+		self::guard( 'clib_bulk_apply', 'clib_bulk_edit' );
+		$res = CLIB_Bulk::apply( CLIB_Util::post( 'token' ) );
+		if ( is_wp_error( $res ) ) {
+			self::notice_error( $res );
+		} else {
+			/* translators: %d: number of items */
+			self::notice( sprintf( _n( '%d item updated.', '%d items updated.', $res, 'church-library' ), $res ) );
+		}
+		self::go( 'clib-catalog' );
+	}
+
+	public static function handle_bulk_cancel() {
+		self::guard( 'clib_bulk_cancel', 'clib_bulk_edit' );
+		CLIB_Bulk::discard( CLIB_Util::post( 'token' ) );
+		self::notice( __( 'Bulk edit cancelled. Nothing was changed.', 'church-library' ), 'info' );
+		self::go( 'clib-catalog' );
 	}
 
 	public static function handle_export() {

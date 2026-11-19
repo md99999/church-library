@@ -15,6 +15,19 @@ if ( $clib_view_id ) {
 	return;
 }
 
+$clib_bulk_ok = current_user_can( 'clib_bulk_edit' );
+
+// Bulk edit confirmation step.
+$clib_bulk_token = CLIB_Util::get( 'bulk' );
+if ( $clib_bulk_ok && is_string( $clib_bulk_token ) && '' !== $clib_bulk_token ) {
+	$clib_req = CLIB_Bulk::load( $clib_bulk_token );
+	if ( $clib_req ) {
+		include CLIB_DIR . 'admin/views/bulk-confirm.php';
+		return;
+	}
+	echo '<div class="notice notice-error"><p>' . esc_html__( 'This bulk edit has expired. Please select the items again.', 'church-library' ) . '</p></div>';
+}
+
 $clib_args = array(
 	'q'             => CLIB_Util::text( CLIB_Util::get( 's' ), 100 ),
 	'media_type_id' => CLIB_Util::int( CLIB_Util::get( 'media_type_id' ) ),
@@ -70,9 +83,51 @@ $clib_sort_link = function ( $col, $label ) use ( $clib_args, $clib_filters ) {
 	?>
 </p>
 
+<?php if ( $clib_bulk_ok && $clib_rows ) : ?>
+<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="clib-bulk-form">
+	<?php wp_nonce_field( 'clib_bulk_prepare' ); ?>
+	<input type="hidden" name="action" value="clib_bulk_prepare">
+	<?php foreach ( array( 's', 'media_type_id', 'church_id', 'building_id', 'status' ) as $clib_fk ) : ?>
+		<input type="hidden" name="f_<?php echo esc_attr( $clib_fk ); ?>" value="<?php echo esc_attr( isset( $clib_filters[ $clib_fk ] ) ? $clib_filters[ $clib_fk ] : '' ); ?>">
+	<?php endforeach; ?>
+	<fieldset class="clib-bulk">
+		<legend><?php esc_html_e( 'Bulk edit', 'church-library' ); ?></legend>
+		<p class="clib-bulk-scope">
+			<label><input type="radio" name="bulk_scope" value="selected" checked> <?php esc_html_e( 'Ticked items', 'church-library' ); ?> (<span id="clib-bulk-count">0</span>)</label>
+			<label><input type="radio" name="bulk_scope" value="filter">
+				<?php
+				/* translators: %s: number of items */
+				echo esc_html( sprintf( _n( 'All %s item matching the current filter (every page)', 'All %s items matching the current filter (every page)', $clib_total, 'church-library' ), number_format_i18n( $clib_total ) ) );
+				?>
+			</label>
+		</p>
+		<p class="clib-bulk-fields">
+			<label><?php esc_html_e( 'Church Name', 'church-library' ); ?>
+				<select name="bulk_church" class="clib-church">
+					<option value=""><?php esc_html_e( '— No change —', 'church-library' ); ?></option>
+					<option value="clear"><?php esc_html_e( '(Clear)', 'church-library' ); ?></option>
+					<?php echo CLIB_Form::lov_options( 'church', 0 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				</select></label>
+			<label><?php esc_html_e( 'Building', 'church-library' ); ?>
+				<select name="bulk_building" class="clib-building">
+					<option value=""><?php esc_html_e( '— No change —', 'church-library' ); ?></option>
+					<option value="clear"><?php esc_html_e( '(Clear)', 'church-library' ); ?></option>
+					<?php echo CLIB_Form::lov_options( 'building', 0 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				</select></label>
+			<label><input type="checkbox" name="bulk_room_on" value="1" id="clib-bulk-room-on"> <?php esc_html_e( 'Set Room to', 'church-library' ); ?>
+				<input type="text" name="bulk_room" maxlength="100" class="regular-text" placeholder="<?php esc_attr_e( 'leave empty to clear', 'church-library' ); ?>"></label>
+			<button type="submit" class="button button-primary"><?php esc_html_e( 'Review changes…', 'church-library' ); ?></button>
+		</p>
+		<p class="description"><?php esc_html_e( 'You will see how many items will change and confirm before anything is saved.', 'church-library' ); ?></p>
+	</fieldset>
+<?php endif; ?>
+
 <table class="widefat striped clib-table">
 	<thead>
 		<tr>
+			<?php if ( $clib_bulk_ok && $clib_rows ) : ?>
+				<td class="manage-column check-column"><input type="checkbox" id="clib-check-all" aria-label="<?php esc_attr_e( 'Select all on this page', 'church-library' ); ?>"></td>
+			<?php endif; ?>
 			<th class="clib-col-img"></th>
 			<th><?php echo $clib_sort_link( 'item_code', __( 'Item ID', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></th>
 			<th><?php echo $clib_sort_link( 'title', __( 'Title', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></th>
@@ -85,11 +140,14 @@ $clib_sort_link = function ( $col, $label ) use ( $clib_args, $clib_filters ) {
 	</thead>
 	<tbody>
 	<?php if ( ! $clib_rows ) : ?>
-		<tr><td colspan="8"><?php esc_html_e( 'No items found.', 'church-library' ); ?></td></tr>
+		<tr><td colspan="9"><?php esc_html_e( 'No items found.', 'church-library' ); ?></td></tr>
 	<?php endif; ?>
 	<?php foreach ( $clib_rows as $clib_r ) : ?>
 		<?php $clib_view_url = CLIB_Admin::url( 'clib-catalog', array( 'view' => (int) $clib_r->id ) ); ?>
 		<tr>
+			<?php if ( $clib_bulk_ok ) : ?>
+				<th scope="row" class="check-column"><input type="checkbox" class="clib-row-check" name="ids[]" value="<?php echo esc_attr( (int) $clib_r->id ); ?>" aria-label="<?php echo esc_attr( $clib_r->title ); ?>"></th>
+			<?php endif; ?>
 			<td class="clib-col-img"><?php echo $clib_r->image_id ? wp_get_attachment_image( (int) $clib_r->image_id, array( 40, 40 ) ) : ''; ?></td>
 			<td><code><?php echo esc_html( $clib_r->item_code ); ?></code></td>
 			<td>
@@ -110,6 +168,9 @@ $clib_sort_link = function ( $col, $label ) use ( $clib_args, $clib_filters ) {
 	<?php endforeach; ?>
 	</tbody>
 </table>
+<?php if ( $clib_bulk_ok && $clib_rows ) : ?>
+</form>
+<?php endif; ?>
 
 <?php if ( $clib_pages > 1 ) : ?>
 	<div class="tablenav"><div class="tablenav-pages">

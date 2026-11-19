@@ -43,6 +43,35 @@
 		syncUninstall();
 	}
 
+	/* Bulk edit: select all on page, live count, scope switch. */
+	var bulkForm = document.getElementById('clib-bulk-form');
+	if (bulkForm) {
+		var all = document.getElementById('clib-check-all');
+		var countEl = document.getElementById('clib-bulk-count');
+		var rows = function () { return document.querySelectorAll('.clib-row-check'); };
+		var refresh = function () {
+			var n = 0;
+			Array.prototype.forEach.call(rows(), function (c) { if (c.checked) { n++; } });
+			if (countEl) { countEl.textContent = String(n); }
+			if (all) { all.checked = n > 0 && n === rows().length; }
+			var sel = bulkForm.querySelector('input[name="bulk_scope"][value="selected"]');
+			if (n > 0 && sel) { sel.checked = true; }
+		};
+		if (all) {
+			all.addEventListener('change', function () {
+				Array.prototype.forEach.call(rows(), function (c) { c.checked = all.checked; });
+				refresh();
+			});
+		}
+		Array.prototype.forEach.call(rows(), function (c) { c.addEventListener('change', refresh); });
+		var room = bulkForm.querySelector('input[name="bulk_room"]');
+		var roomOn = document.getElementById('clib-bulk-room-on');
+		if (room && roomOn) {
+			room.addEventListener('input', function () { roomOn.checked = true; });
+		}
+		refresh();
+	}
+
 	/* Print button. */
 	each('.clib-print', function (b) {
 		b.addEventListener('click', function () { window.print(); });
