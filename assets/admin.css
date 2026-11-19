@@ -44,6 +44,8 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 .clib-disclaimer h2 { margin-top: 8px; }
 .clib-danger { background: #fcf0f1; border-left: 4px solid #d63638; padding: 4px 12px; margin-top: 8px; max-width: 760px; }
 
+.clib-providers { margin: 8px 0 0 24px; }
+.clib-providers label { display: inline-block; margin: 2px 0; }
 .clib-bulk { background: #fff; border: 1px solid #dcdcde; padding: 4px 14px 8px; margin: 0 0 12px; }
 .clib-bulk legend { font-weight: 600; padding: 0 4px; }
 .clib-bulk-scope label, .clib-bulk-fields label { margin-right: 14px; display: inline-block; }

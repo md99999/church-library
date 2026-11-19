@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'CLIB_VERSION', '1.1.0' );
-define( 'CLIB_DB_VERSION', '3' );
+define( 'CLIB_DB_VERSION', '5' );
 define( 'CLIB_FILE', __FILE__ );
 define( 'CLIB_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CLIB_URL', plugin_dir_url( __FILE__ ) );
@@ -46,7 +46,9 @@ require_once CLIB_DIR . 'includes/class-clib-items.php';
 require_once CLIB_DIR . 'includes/class-clib-loans.php';
 require_once CLIB_DIR . 'includes/class-clib-reports.php';
 require_once CLIB_DIR . 'includes/class-clib-lookup.php';
+require_once CLIB_DIR . 'includes/class-clib-lookup-music.php';
 require_once CLIB_DIR . 'includes/class-clib-import.php';
+require_once CLIB_DIR . 'includes/class-clib-privacy.php';
 require_once CLIB_DIR . 'includes/class-clib-bulk.php';
 require_once CLIB_DIR . 'includes/class-clib-export.php';
 require_once CLIB_DIR . 'public/class-clib-public.php';
@@ -61,6 +63,7 @@ register_deactivation_hook( __FILE__, array( 'CLIB_DB', 'deactivate' ) );
 add_action( 'plugins_loaded', array( 'CLIB_DB', 'maybe_upgrade' ) );
 add_action( 'init', array( 'CLIB_Public', 'init' ) );
 add_action( 'init', array( 'CLIB_Lookup', 'init' ) );
+CLIB_Privacy::init();
 
 if ( is_admin() ) {
 	add_action( 'init', array( 'CLIB_Admin', 'init' ) );

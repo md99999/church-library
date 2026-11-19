@@ -64,11 +64,6 @@
 			});
 		}
 		Array.prototype.forEach.call(rows(), function (c) { c.addEventListener('change', refresh); });
-		var room = bulkForm.querySelector('input[name="bulk_room"]');
-		var roomOn = document.getElementById('clib-bulk-room-on');
-		if (room && roomOn) {
-			room.addEventListener('input', function () { roomOn.checked = true; });
-		}
 		refresh();
 	}
 
@@ -114,6 +109,31 @@
 		}
 		church.addEventListener('change', filter);
 		filter();
+	});
+
+	/* Filter rooms by selected building (within the same form). */
+	each('select.clib-room', function (room) {
+		var form = room.form;
+		var building = form && form.querySelector('select.clib-building');
+		if (!building) {
+			return;
+		}
+		function filterRooms() {
+			var b = building.value;
+			var numeric = /^[0-9]+$/.test(b);
+			Array.prototype.forEach.call(room.options, function (o) {
+				var p = o.getAttribute('data-building');
+				var show = !p || p === '0' || !numeric || p === b;
+				o.hidden = !show;
+				o.disabled = !show;
+			});
+			var sel = room.options[room.selectedIndex];
+			if (sel && sel.disabled) {
+				room.value = '';
+			}
+		}
+		building.addEventListener('change', filterRooms);
+		filterRooms();
 	});
 
 	/* Title / ISBN lookup. */
@@ -171,7 +191,9 @@
 		data.remote.forEach(function (r) {
 			var li = el('li');
 			if (r.cover_thumb && /^https:\/\//.test(r.cover_thumb)) {
-				li.appendChild(el('img', { src: r.cover_thumb, alt: '', loading: 'lazy' }));
+				var im = el('img', { src: r.cover_thumb, alt: '', loading: 'lazy' });
+				im.addEventListener('error', function () { im.hidden = true; });
+				li.appendChild(im);
 			}
 			var info = el('div');
 			info.appendChild(el('strong', null, r.title));
@@ -197,6 +219,9 @@
 		body.append('nonce', cfg.lookupNonce || '');
 		body.append('type', type);
 		body.append('q', query);
+		var mediaSel = document.getElementById('clib-media');
+		var mOpt = mediaSel && mediaSel.options[mediaSel.selectedIndex];
+		body.append('music', mOpt && mOpt.getAttribute('data-music') === '1' ? '1' : '');
 		fetch(cfg.ajaxUrl, {
 			method: 'POST',
 			credentials: 'same-origin',

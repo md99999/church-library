@@ -71,7 +71,7 @@ $clib_lov_link = function ( $list ) {
 				<label for="clib-identifier"><?php esc_html_e( 'ISBN or Identifier', 'church-library' ); ?></label>
 				<span class="clib-lookup-row">
 					<input type="text" id="clib-identifier" name="identifier" maxlength="64" value="<?php echo esc_attr( $clib_f( 'identifier' ) ); ?>">
-					<button type="button" class="button" id="clib-lookup-isbn" data-type="isbn"><?php esc_html_e( 'Look up ISBN', 'church-library' ); ?></button>
+					<button type="button" class="button" id="clib-lookup-isbn" data-type="isbn"><?php esc_html_e( 'Look up ISBN / barcode', 'church-library' ); ?></button>
 				</span>
 			</p>
 			<p class="clib-field">
@@ -108,8 +108,8 @@ $clib_lov_link = function ( $list ) {
 				<select id="clib-building" name="building_id" class="clib-building"><?php echo CLIB_Form::lov_options( 'building', $clib_f( 'building_id' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 			</p>
 			<p class="clib-field">
-				<label for="clib-room"><?php esc_html_e( 'Room', 'church-library' ); ?></label>
-				<input type="text" id="clib-room" name="room" maxlength="100" value="<?php echo esc_attr( $clib_f( 'room' ) ); ?>">
+				<label for="clib-room"><?php esc_html_e( 'Room', 'church-library' ); ?><?php echo $clib_lov_link( 'room' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
+				<select id="clib-room" name="room" class="clib-room"><?php echo CLIB_Form::room_options( $clib_f( 'room' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 			</p>
 			<p class="clib-field">
 				<label for="clib-loc"><?php esc_html_e( 'Location ID', 'church-library' ); ?></label>

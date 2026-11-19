@@ -96,11 +96,31 @@ class CLIB_Bulk {
 		if ( is_wp_error( $building ) ) {
 			return $building;
 		}
-		$room_on = ! empty( $src['bulk_room_on'] );
-		$room    = $room_on ? CLIB_Util::text( isset( $src['bulk_room'] ) ? $src['bulk_room'] : '', 100 ) : '';
+		// Room: '' = no change, 'clear', or 'id:<room list id>'.
+		$room_raw = isset( $src['bulk_room'] ) && is_scalar( $src['bulk_room'] ) ? (string) wp_unslash( $src['bulk_room'] ) : '';
+		$room_on  = '' !== $room_raw;
+		$room     = '';
+		$room_row = null;
+		if ( $room_on && self::CLEAR !== $room_raw ) {
+			$rid = 0 === strpos( $room_raw, 'id:' ) ? CLIB_Util::int( substr( $room_raw, 3 ) ) : 0;
+			if ( ! $rid || ! CLIB_LOV::in_list( $rid, 'room' ) ) {
+				return new WP_Error( 'clib_bulk', __( 'Invalid room.', 'church-library' ) );
+			}
+			$room_row = CLIB_LOV::get( $rid );
+			$room     = $room_row->label;
+		}
 
 		if ( 'keep' === $church['mode'] && 'keep' === $building['mode'] && ! $room_on ) {
 			return new WP_Error( 'clib_bulk', __( 'Choose at least one change: Church, Building or Room.', 'church-library' ) );
+		}
+
+		// A room that belongs to a building fixes the building (and so the church) too.
+		if ( $room_row && $room_row->parent_id ) {
+			if ( 'keep' === $building['mode'] ) {
+				$building = array( 'mode' => 'set', 'id' => (int) $room_row->parent_id );
+			} elseif ( 'clear' === $building['mode'] || (int) $room_row->parent_id !== $building['id'] ) {
+				return new WP_Error( 'clib_bulk', __( 'That room belongs to a different building.', 'church-library' ) );
+			}
 		}
 
 		// A building that belongs to a church fixes the church too.
@@ -255,6 +275,14 @@ class CLIB_Bulk {
 				$fix        = "UPDATE $items i JOIN $lov b ON b.id = i.building_id SET i.building_id = NULL
 					WHERE b.parent_id IS NOT NULL AND b.parent_id <> %d AND i.id IN (" . CLIB_Util::in_placeholders( $chunk ) . ')';
 				$wpdb->query( $wpdb->prepare( $fix, array_merge( array( $new_church ), $chunk ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			}
+		}
+		// Building changed but room kept: clear rooms that belong to a different building.
+		if ( ! $req['room_on'] && ( 'keep' !== $req['building']['mode'] || 'keep' !== $req['church']['mode'] ) ) {
+			foreach ( array_chunk( $ids, 500 ) as $chunk ) {
+				$fix = "UPDATE $items i JOIN $lov r ON r.list_type = 'room' AND r.label = i.room SET i.room = ''
+					WHERE r.parent_id IS NOT NULL AND r.parent_id <> COALESCE(i.building_id, 0) AND i.id IN (" . CLIB_Util::in_placeholders( $chunk ) . ')';
+				$wpdb->query( $wpdb->prepare( $fix, $chunk ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			}
 		}
 		$wpdb->query( 'COMMIT' );

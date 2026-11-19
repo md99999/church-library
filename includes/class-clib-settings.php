@@ -21,7 +21,9 @@ class CLIB_Settings {
 			'public_access'    => 1,  // Guests may view the catalog.
 			'loan_days'        => 21,
 			'per_page'         => 25,
-			'lookup_enabled'   => 1,  // Open Library title / ISBN lookup.
+			'lookup_enabled'   => 1,  // Title / ISBN lookup master switch.
+			'lookup_providers' => array( 'openlibrary', 'musicbrainz', 'hymnary', 'imslp' ),
+			'discogs_token'    => '',
 			'show_borrowers'   => 0,  // Show "checked out by" names to view-only users.
 			'uninstall_delete' => 0,  // Drop tables on uninstall.
 			'catalog_page_id'  => 0,
@@ -58,6 +60,18 @@ class CLIB_Settings {
 		$out['uninstall_delete'] = empty( $raw['uninstall_delete'] ) ? 0 : 1;
 		$out['loan_days']        = CLIB_Util::int( isset( $raw['loan_days'] ) ? $raw['loan_days'] : 21, 1, 365 );
 		$out['per_page']         = CLIB_Util::int( isset( $raw['per_page'] ) ? $raw['per_page'] : 25, 5, 200 );
+
+		$known                   = array_keys( CLIB_Lookup::providers() );
+		$posted                  = isset( $raw['lookup_providers'] ) && is_array( $raw['lookup_providers'] ) ? array_map( 'sanitize_key', $raw['lookup_providers'] ) : array();
+		$out['lookup_providers'] = array_values( array_intersect( $known, $posted ) );
+
+		// Token: blank keeps the saved one; "clear" box removes it; otherwise it must look like a Discogs token.
+		$token = isset( $raw['discogs_token'] ) && is_string( $raw['discogs_token'] ) ? trim( wp_unslash( $raw['discogs_token'] ) ) : '';
+		if ( ! empty( $raw['discogs_token_clear'] ) ) {
+			$out['discogs_token'] = '';
+		} elseif ( '' !== $token ) {
+			$out['discogs_token'] = preg_match( '/^[A-Za-z0-9]{20,64}$/', $token ) ? $token : $out['discogs_token'];
+		}
 		return $out;
 	}
 

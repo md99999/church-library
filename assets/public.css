@@ -71,3 +71,20 @@
 @media print {
 	.clib .clib-nav, .clib .clib-tabs, .clib .clib-report-actions, .clib .clib-search { display: none !important; }
 }
+
+/* Form controls: keep a fixed size on focus whatever the theme does
+   (no zoom, scale, padding or border jumps that cover the label above). */
+.clib label { display: inline-block; margin-bottom: 4px; line-height: 1.4; }
+.clib p > label, .clib .clib-field > label { display: block; }
+.clib input[type=text], .clib input[type=email], .clib input[type=search], .clib input[type=number],
+.clib input[type=date], .clib input[type=password], .clib select, .clib textarea {
+	box-sizing: border-box; font-size: 16px; line-height: 1.4; padding: 6px 8px; margin: 2px 0 0;
+	border: 1px solid rgba(0,0,0,.35); border-radius: 4px; transform: none !important; transition: none !important;
+	min-height: 0; height: auto; position: static;
+}
+.clib input:focus, .clib select:focus, .clib textarea:focus {
+	transform: none !important; padding: 6px 8px; border-width: 1px; box-shadow: none;
+	outline: 2px solid #2271b1; outline-offset: 1px;
+}
+.clib button:focus, .clib .clib-btn:focus { transform: none !important; outline: 2px solid #2271b1; outline-offset: 2px; }
+.clib .clib-form p, .clib .clib-field { margin: 0 0 14px; }

@@ -14,6 +14,7 @@ $clib_due_default = ( new DateTime( 'now', wp_timezone() ) )->modify( '+' . (int
 <p>
 	<label><?php esc_html_e( 'Borrower name', 'church-library' ); ?><br>
 		<input type="text" name="borrower_name" maxlength="150" class="regular-text"></label>
+	<br><span class="description"><?php esc_html_e( 'Required unless you enter a site account below.', 'church-library' ); ?></span>
 </p>
 <p>
 	<label><?php esc_html_e( 'Site account (username or email, optional)', 'church-library' ); ?><br>
@@ -21,7 +22,12 @@ $clib_due_default = ( new DateTime( 'now', wp_timezone() ) )->modify( '+' . (int
 	<br><span class="description"><?php esc_html_e( 'Enter a name, an account, or both. Linking an account lets the borrower see the loan on Library - My Loans.', 'church-library' ); ?></span>
 </p>
 <p>
-	<label><?php esc_html_e( 'Contact (phone or email)', 'church-library' ); ?><br>
+	<label><?php esc_html_e( 'Borrower email (optional)', 'church-library' ); ?><br>
+		<input type="email" name="borrower_email" maxlength="100" class="regular-text" autocomplete="off"></label>
+	<br><span class="description"><?php esc_html_e( 'Borrowers do not need a site account. If you enter an account and leave this blank, the account email is used. Only library staff can see it.', 'church-library' ); ?></span>
+</p>
+<p>
+	<label><?php esc_html_e( 'Phone or other contact (optional)', 'church-library' ); ?><br>
 		<input type="text" name="borrower_contact" maxlength="150" class="regular-text"></label>
 </p>
 <p>

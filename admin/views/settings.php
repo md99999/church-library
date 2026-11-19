@@ -53,7 +53,29 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 		</tr>
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Title / ISBN lookup', 'church-library' ); ?></th>
-			<td><label><input type="checkbox" name="clib[lookup_enabled]" value="1" <?php checked( $clib_s['lookup_enabled'], 1 ); ?>> <?php esc_html_e( 'Allow staff to look up titles and covers online (Open Library). Titles typed in the lookup are sent to that service.', 'church-library' ); ?></label></td>
+			<td>
+				<label><input type="checkbox" name="clib[lookup_enabled]" value="1" <?php checked( $clib_s['lookup_enabled'], 1 ); ?>> <?php esc_html_e( 'Allow staff to look up titles, barcodes and covers online. Text typed in the lookup is sent to the sources ticked below.', 'church-library' ); ?></label>
+				<fieldset class="clib-providers">
+					<?php
+					$clib_pdesc = array(
+						'openlibrary' => __( 'Open Library: books, by title or ISBN. Free, no key.', 'church-library' ),
+						'musicbrainz' => __( 'MusicBrainz + Cover Art Archive: CDs, albums and recordings, by title or CD barcode, with album art. Free, no key; limited to one request per second.', 'church-library' ),
+						'hymnary'     => __( 'Hymnary.org: hymn texts by title or first line, with authors and meter. Free, no key; no cover images.', 'church-library' ),
+						'imslp'       => __( 'IMSLP (Petrucci Music Library): public-domain scores, by work title, with composer. Free, no key; no cover images.', 'church-library' ),
+						'discogs'     => __( 'Discogs: CDs, records and other music releases, by title or barcode, with cover images. Needs a free Discogs account and personal access token (Discogs > Settings > Developers). Review the Discogs API terms before turning this on.', 'church-library' ),
+					);
+					foreach ( CLIB_Lookup::providers() as $clib_pid => $clib_p ) :
+						?>
+						<label><input type="checkbox" name="clib[lookup_providers][]" value="<?php echo esc_attr( $clib_pid ); ?>" <?php checked( in_array( $clib_pid, (array) $clib_s['lookup_providers'], true ) ); ?>>
+							<?php echo esc_html( isset( $clib_pdesc[ $clib_pid ] ) ? $clib_pdesc[ $clib_pid ] : $clib_p->label() ); ?></label><br>
+					<?php endforeach; ?>
+					<label><?php esc_html_e( 'Discogs personal access token', 'church-library' ); ?>
+						<input type="password" name="clib[discogs_token]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_token'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
+					<?php if ( $clib_s['discogs_token'] ) : ?>
+						<label><input type="checkbox" name="clib[discogs_token_clear]" value="1"> <?php esc_html_e( 'Remove saved token', 'church-library' ); ?></label>
+					<?php endif; ?>
+				</fieldset>
+			</td>
 		</tr>
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Uninstall', 'church-library' ); ?></th>

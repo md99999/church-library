@@ -67,7 +67,7 @@ $clib_list = $clib_item ? array_map(
 			<?php $clib_over = $clib_l->due_date && $clib_l->due_date < $clib_today; ?>
 			<tr class="<?php echo $clib_over ? 'clib-overdue' : ''; ?>">
 				<td><a href="<?php echo esc_url( CLIB_Pages::url( 'catalog', array( 'clib_item' => $clib_l->item_code ) ) ); ?>"><?php echo esc_html( $clib_l->title ); ?></a><br><small><?php echo esc_html( $clib_l->item_code ); ?></small></td>
-				<td><?php echo esc_html( $clib_l->borrower_name ); ?><?php echo $clib_l->borrower_contact ? '<br><small>' . esc_html( $clib_l->borrower_contact ) . '</small>' : ''; ?></td>
+				<td><?php echo esc_html( $clib_l->borrower_name ); ?><?php echo trim( $clib_l->borrower_email . ' ' . $clib_l->borrower_contact ) ? '<br><small>' . esc_html( trim( $clib_l->borrower_email . ' ' . $clib_l->borrower_contact ) ) . '</small>' : ''; ?></td>
 				<td><?php echo esc_html( CLIB_Util::fmt_date( $clib_l->due_date ) ); ?><?php echo $clib_over ? ' <strong>' . esc_html__( 'Overdue', 'church-library' ) . '</strong>' : ''; ?></td>
 				<td>
 					<?php echo CLIB_Public::form_open( 'checkin' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>

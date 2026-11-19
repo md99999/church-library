@@ -49,6 +49,7 @@ class CLIB_Admin {
 			'clib_export',
 			'clib_import',
 			'clib_export_catalog',
+			'clib_music_template',
 		);
 		foreach ( $actions as $a ) {
 			add_action( 'admin_post_' . $a, array( __CLASS__, 'handle_' . substr( $a, 5 ) ) );
@@ -402,6 +403,11 @@ class CLIB_Admin {
 	public static function handle_export_catalog() {
 		self::guard( 'clib_export_catalog', 'clib_import' );
 		CLIB_Export::send( CLIB_Export::filters( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- guard() verified; filters() sanitizes.
+	}
+
+	public static function handle_music_template() {
+		self::guard( 'clib_music_template', 'clib_import' );
+		CLIB_Export::send_music_template();
 	}
 
 	public static function handle_import() {

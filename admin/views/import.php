@@ -25,8 +25,43 @@ if ( is_array( $clib_result ) ) {
 	<select name="church_id" class="clib-church"><?php echo CLIB_Form::lov_options( 'church', 0, __( 'All churches', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="building_id" class="clib-building"><?php echo CLIB_Form::lov_options( 'building', 0, __( 'All buildings', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="status"><?php echo CLIB_Form::map_options( CLIB_Util::status_labels(), '', __( 'Any status', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<label><input type="checkbox" name="music_only" value="1"> <?php esc_html_e( 'Music only', 'church-library' ); ?></label>
 	<button class="button button-primary"><?php esc_html_e( 'Download CSV', 'church-library' ); ?></button>
 </form>
+
+<h2><?php esc_html_e( 'Music items', 'church-library' ); ?></h2>
+<p><?php esc_html_e( 'Music uses the same CSV format as everything else; the music columns are Music Sub-category and Difficulty Level. Tick "Music only" above to export just the music library, or start from the blank music template. Values must match Library - List of Values exactly (any capitalisation); rows that do not match are skipped and listed so you can fix them.', 'church-library' ); ?></p>
+<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+	<?php wp_nonce_field( 'clib_music_template' ); ?>
+	<input type="hidden" name="action" value="clib_music_template">
+	<button class="button"><?php esc_html_e( 'Download blank music template', 'church-library' ); ?></button>
+</form>
+<details class="clib-allowed">
+	<summary><?php esc_html_e( 'Allowed values for music columns', 'church-library' ); ?></summary>
+	<?php
+	$clib_music_types = array();
+	foreach ( CLIB_LOV::all( 'media_type', true ) as $clib_mt ) {
+		if ( (int) $clib_mt->is_music ) {
+			$clib_music_types[] = $clib_mt->label;
+		}
+	}
+	$clib_allowed = array(
+		__( 'Media Type (music)', 'church-library' ) => $clib_music_types,
+		__( 'Music Sub-category', 'church-library' ) => wp_list_pluck( CLIB_LOV::all( 'music_subcategory', true ), 'label' ),
+		__( 'Difficulty Level', 'church-library' )   => array_values( CLIB_Util::difficulty_labels( true ) ),
+		__( 'Condition', 'church-library' )          => array_values( CLIB_Util::condition_labels( true ) ),
+		__( 'Classification', 'church-library' )     => wp_list_pluck( CLIB_LOV::all( 'classification', true ), 'label' ),
+		__( 'Church Name', 'church-library' )        => wp_list_pluck( CLIB_LOV::all( 'church', true ), 'label' ),
+		__( 'Building', 'church-library' )           => wp_list_pluck( CLIB_LOV::all( 'building', true ), 'label' ),
+		__( 'Room', 'church-library' )               => wp_list_pluck( CLIB_LOV::all( 'room', true ), 'label' ),
+	);
+	?>
+	<table class="widefat striped">
+		<?php foreach ( $clib_allowed as $clib_col => $clib_vals ) : ?>
+			<tr><th scope="row"><?php echo esc_html( $clib_col ); ?></th><td><?php echo $clib_vals ? esc_html( implode( ' · ', $clib_vals ) ) : '<em>' . esc_html__( '(none yet)', 'church-library' ) . '</em>'; ?></td></tr>
+		<?php endforeach; ?>
+	</table>
+</details>
 
 <hr>
 <h2><?php esc_html_e( 'Import from CSV', 'church-library' ); ?></h2>

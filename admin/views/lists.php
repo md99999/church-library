@@ -25,6 +25,8 @@ $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 
 <?php if ( 'media_type' === $clib_type ) : ?>
 	<p class="description"><?php esc_html_e( 'The ID prefix is used for new Item IDs, e.g. BOOK-000123. Tick "Music" for types that use the music sub-category and difficulty fields.', 'church-library' ); ?></p>
+<?php elseif ( 'room' === $clib_type ) : ?>
+	<p class="description"><?php esc_html_e( 'Link a room to its building so the item form only offers rooms in the chosen building. Renaming a room renames it on every item that uses it.', 'church-library' ); ?></p>
 <?php elseif ( 'building' === $clib_type ) : ?>
 	<p class="description"><?php esc_html_e( 'Link a building to its church so the item form only offers the right buildings.', 'church-library' ); ?></p>
 <?php elseif ( in_array( $clib_type, CLIB_LOV::coded_types(), true ) ) : ?>
@@ -42,6 +44,9 @@ $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 		<?php endif; ?>
 		<?php if ( 'building' === $clib_type ) : ?>
 			<th><?php esc_html_e( 'Church', 'church-library' ); ?></th>
+		<?php endif; ?>
+		<?php if ( 'room' === $clib_type ) : ?>
+			<th><?php esc_html_e( 'Building', 'church-library' ); ?></th>
 		<?php endif; ?>
 		<?php if ( in_array( $clib_type, CLIB_LOV::coded_types(), true ) ) : ?>
 			<th><?php esc_html_e( 'Stored value', 'church-library' ); ?></th>
@@ -61,6 +66,9 @@ $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 			<?php endif; ?>
 			<?php if ( 'building' === $clib_type ) : ?>
 				<td><select form="<?php echo esc_attr( $clib_form ); ?>" name="parent_id"><?php echo CLIB_Admin::lov_options( 'church', $clib_row->parent_id, __( '(any)', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select></td>
+			<?php endif; ?>
+			<?php if ( 'room' === $clib_type ) : ?>
+				<td><select form="<?php echo esc_attr( $clib_form ); ?>" name="parent_id"><?php echo CLIB_Admin::lov_options( 'building', $clib_row->parent_id, __( '(any)', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select></td>
 			<?php endif; ?>
 			<?php if ( in_array( $clib_type, CLIB_LOV::coded_types(), true ) ) : ?>
 				<td><code><?php echo esc_html( $clib_row->code ); ?></code></td>
@@ -98,6 +106,9 @@ $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 	<?php endif; ?>
 	<?php if ( 'building' === $clib_type ) : ?>
 		<select name="parent_id"><?php echo CLIB_Admin::lov_options( 'church', 0, __( 'Church (any)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<?php endif; ?>
+	<?php if ( 'room' === $clib_type ) : ?>
+		<select name="parent_id"><?php echo CLIB_Admin::lov_options( 'building', 0, __( 'Building (any)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<?php endif; ?>
 	<input type="number" name="sort_order" min="0" max="100000" class="small-text" value="<?php echo esc_attr( ( count( $clib_rows ) + 1 ) * 10 ); ?>">
 	<button class="button button-primary"><?php esc_html_e( 'Add', 'church-library' ); ?></button>

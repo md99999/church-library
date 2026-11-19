@@ -73,7 +73,7 @@ $clib_today = current_time( 'Y-m-d' );
 			<td><code><?php echo esc_html( $clib_l->item_code ); ?></code></td>
 			<td><a href="<?php echo esc_url( CLIB_Admin::url( 'clib-catalog', array( 'view' => (int) $clib_l->item_id ) ) ); ?>"><?php echo esc_html( $clib_l->title ); ?></a></td>
 			<td><?php echo esc_html( $clib_l->borrower_name ); ?></td>
-			<td><?php echo esc_html( $clib_l->borrower_contact ); ?></td>
+			<td><?php echo esc_html( trim( $clib_l->borrower_email . ' ' . $clib_l->borrower_contact ) ); ?></td>
 			<td><?php echo esc_html( CLIB_Util::fmt_date( $clib_l->due_date ) ); ?><?php echo $clib_over ? ' <strong>' . esc_html__( 'Overdue', 'church-library' ) . '</strong>' : ''; ?></td>
 			<td>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">

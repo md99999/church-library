@@ -98,7 +98,7 @@ if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 					<?php foreach ( $clib_active as $clib_loan ) : ?>
 						<tr class="<?php echo ( $clib_loan->due_date && $clib_loan->due_date < $clib_today ) ? 'clib-overdue' : ''; ?>">
 							<td><?php echo esc_html( $clib_loan->borrower_name ); ?></td>
-							<td><?php echo esc_html( $clib_loan->borrower_contact ); ?></td>
+							<td><?php echo esc_html( trim( $clib_loan->borrower_email . ' ' . $clib_loan->borrower_contact ) ); ?></td>
 							<td><?php echo esc_html( CLIB_Util::fmt_date( $clib_loan->checked_out_at ) ); ?></td>
 							<td><?php echo esc_html( CLIB_Util::fmt_date( $clib_loan->due_date ) ); ?></td>
 							<td>

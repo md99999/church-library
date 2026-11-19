@@ -115,6 +115,23 @@ class CLIB_Reports {
 		return $sections;
 	}
 
+	/**
+	 * Borrower email and contact are personal data: only staff who run
+	 * circulation see them. Other report viewers get the columns removed.
+	 */
+	private static function limit_pii( array $section ) {
+		if ( current_user_can( 'clib_circulate' ) ) {
+			return $section;
+		}
+		foreach ( array( 'email', 'contact' ) as $k ) {
+			unset( $section['columns'][ $k ] );
+			foreach ( $section['rows'] as $i => $row ) {
+				unset( $section['rows'][ $i ][ $k ] );
+			}
+		}
+		return $section;
+	}
+
 	private static function loans_section( $title, $loans ) {
 		$today = current_time( 'Y-m-d' );
 		$rows  = array();
@@ -124,6 +141,7 @@ class CLIB_Reports {
 				'title'       => $l->title,
 				'church'      => $l->church_label,
 				'borrower'    => $l->borrower_name,
+				'email'       => $l->borrower_email,
 				'contact'     => $l->borrower_contact,
 				'out'         => CLIB_Util::fmt_date( $l->checked_out_at ),
 				'due'         => CLIB_Util::fmt_date( $l->due_date ),
@@ -132,19 +150,22 @@ class CLIB_Reports {
 				'_item_id'    => (int) $l->item_id,
 			);
 		}
-		return array(
+		return self::limit_pii(
+			array(
 			'title'   => $title,
 			'columns' => array(
 				'item_code' => __( 'Item ID', 'church-library' ),
 				'title'     => __( 'Title', 'church-library' ),
 				'church'    => __( 'Church', 'church-library' ),
 				'borrower'  => __( 'Checked Out By', 'church-library' ),
+				'email'     => __( 'Email', 'church-library' ),
 				'contact'   => __( 'Contact', 'church-library' ),
 				'out'       => __( 'Checked Out', 'church-library' ),
 				'due'       => __( 'Due', 'church-library' ),
 				'days_over' => __( 'Days Overdue', 'church-library' ),
 			),
 			'rows'    => $rows,
+			)
 		);
 	}
 
@@ -165,25 +186,29 @@ class CLIB_Reports {
 				'item_code' => $r->item_code,
 				'title'     => $r->title,
 				'borrower'  => $r->borrower_name,
+				'email'     => $r->borrower_email,
 				'out'       => CLIB_Util::fmt_date( $r->checked_out_at ),
 				'due'       => CLIB_Util::fmt_date( $r->due_date ),
 				'returned'  => $r->returned_at ? CLIB_Util::fmt_date( $r->returned_at ) : __( 'Still out', 'church-library' ),
 				'condition' => CLIB_Util::label( CLIB_Util::condition_labels(), $r->return_condition ),
 			);
 		}
-		return array(
+		return self::limit_pii(
+			array(
 			/* translators: 1: from date, 2: to date */
 			'title'   => sprintf( __( 'Circulation %1$s to %2$s', 'church-library' ), $args['from'], $args['to'] ),
 			'columns' => array(
 				'item_code' => __( 'Item ID', 'church-library' ),
 				'title'     => __( 'Title', 'church-library' ),
 				'borrower'  => __( 'Borrower', 'church-library' ),
+				'email'     => __( 'Email', 'church-library' ),
 				'out'       => __( 'Checked Out', 'church-library' ),
 				'due'       => __( 'Due', 'church-library' ),
 				'returned'  => __( 'Returned', 'church-library' ),
 				'condition' => __( 'Return Condition', 'church-library' ),
 			),
 			'rows'    => $rows,
+			)
 		);
 	}
 

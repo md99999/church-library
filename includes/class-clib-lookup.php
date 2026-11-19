@@ -42,7 +42,7 @@ class CLIB_Lookup {
 
 	/** @return CLIB_Lookup_Provider[] keyed by id. */
 	public static function providers() {
-		$list = apply_filters( 'clib_lookup_providers', array( new CLIB_Lookup_OpenLibrary() ) );
+		$list = apply_filters( 'clib_lookup_providers', array( new CLIB_Lookup_OpenLibrary(), new CLIB_Lookup_MusicBrainz(), new CLIB_Lookup_Hymnary(), new CLIB_Lookup_IMSLP(), new CLIB_Lookup_Discogs() ) );
 		$out  = array();
 		foreach ( (array) $list as $p ) {
 			if ( $p instanceof CLIB_Lookup_Provider ) {
@@ -50,6 +50,41 @@ class CLIB_Lookup {
 			}
 		}
 		return $out;
+	}
+
+	/** Providers switched on in Library - Settings (and configured, where a key is needed). */
+	public static function enabled_providers() {
+		$on  = (array) CLIB_Settings::get( 'lookup_providers' );
+		$out = array();
+		foreach ( self::providers() as $id => $p ) {
+			if ( ! in_array( $id, $on, true ) ) {
+				continue;
+			}
+			if ( method_exists( $p, 'is_configured' ) && ! $p->is_configured() ) {
+				continue;
+			}
+			$out[ $id ] = $p;
+		}
+		return $out;
+	}
+
+	/** Provider kind: 'book' (default) or 'music'. */
+	public static function kind( $p ) {
+		return method_exists( $p, 'kind' ) && 'music' === $p->kind() ? 'music' : 'book';
+	}
+
+	/**
+	 * Space out calls to services with a per-second limit (MusicBrainz asks for
+	 * at most one request per second). Waits at most 2 seconds.
+	 */
+	public static function wait_turn( $service, $gap_ms ) {
+		$key  = 'clib_gap_' . sanitize_key( $service );
+		$last = (float) get_transient( $key );
+		$wait = $last + ( $gap_ms / 1000 ) - microtime( true );
+		if ( $wait > 0 ) {
+			usleep( (int) ( min( $wait, 2 ) * 1000000 ) );
+		}
+		set_transient( $key, (string) microtime( true ), 60 );
 	}
 
 	public static function provider( $id ) {
@@ -73,10 +108,11 @@ class CLIB_Lookup {
 
 		$type  = CLIB_Util::enum( CLIB_Util::post( 'type', 'title' ), array( 'title', 'isbn' ), 'title' );
 		$query = CLIB_Util::text( CLIB_Util::post( 'q' ), 200 );
+		$music = (bool) CLIB_Util::post( 'music' );
 		if ( 'isbn' === $type ) {
 			$query = strtoupper( preg_replace( '/[^0-9Xx]/', '', $query ) );
-			if ( ! in_array( strlen( $query ), array( 10, 13 ), true ) ) {
-				wp_send_json_error( array( 'message' => __( 'Enter a 10 or 13 digit ISBN.', 'church-library' ) ) );
+			if ( ! in_array( strlen( $query ), array( 10, 12, 13 ), true ) ) {
+				wp_send_json_error( array( 'message' => __( 'Enter a 10 or 13 digit ISBN, or a 12 or 13 digit CD barcode.', 'church-library' ) ) );
 			}
 		} elseif ( strlen( $query ) < 2 ) {
 			wp_send_json_error( array( 'message' => __( 'Enter at least 2 characters.', 'church-library' ) ) );
@@ -88,13 +124,23 @@ class CLIB_Lookup {
 		);
 
 		if ( CLIB_Settings::get( 'lookup_enabled' ) ) {
-			foreach ( self::providers() as $pid => $provider ) {
+			// Music sources first for music items, book sources first otherwise.
+			$providers = self::enabled_providers();
+			uasort(
+				$providers,
+				function ( $a, $b ) use ( $music ) {
+					$ka = 'music' === CLIB_Lookup::kind( $a ) ? 0 : 1;
+					$kb = 'music' === CLIB_Lookup::kind( $b ) ? 0 : 1;
+					return $music ? $ka - $kb : $kb - $ka;
+				}
+			);
+			foreach ( $providers as $pid => $provider ) {
 				$cache_key = 'clib_lk_' . md5( $pid . '|' . $type . '|' . strtolower( $query ) );
 				$results   = get_transient( $cache_key );
 				if ( ! is_array( $results ) ) {
 					$results = $provider->search( $type, $query );
 					$results = is_array( $results ) ? array_slice( $results, 0, 10 ) : array();
-					set_transient( $cache_key, $results, 12 * HOUR_IN_SECONDS );
+					set_transient( $cache_key, $results, $results ? 12 * HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS ); // Short cache for empty answers (may be a busy service).
 				}
 				foreach ( $results as $r ) {
 					$response['remote'][] = self::clean_result( $pid, $provider->label(), $r );
@@ -164,21 +210,35 @@ class CLIB_Lookup {
 		return CLIB_Items::sideload_image( $url, 'cover-' . sanitize_file_name( $provider_id ) . '.jpg', $title );
 	}
 
-	/** Shared HTTP helper for providers: https only, small, short timeout. */
-	public static function http_json( $url ) {
+	/** Shared HTTP helper for providers: https only, small, short timeout. Returns the body or null. */
+	public static function http_body( $url, array $headers = array(), $accept = 'application/json' ) {
+		if ( 'https' !== wp_parse_url( (string) $url, PHP_URL_SCHEME ) ) {
+			return null;
+		}
 		$res = wp_safe_remote_get(
 			$url,
 			array(
 				'timeout'             => 8,
 				'redirection'         => 2,
 				'limit_response_size' => 1048576,
-				'user-agent'          => 'ChurchLibrary/' . CLIB_VERSION . ' (WordPress plugin)',
+				// Services ask for an identifying User-Agent with a contact URL; no personal data.
+				'user-agent'          => 'ChurchLibrary/' . CLIB_VERSION . ' ( https://github.com/md99999/church-library )',
+				'headers'             => array_merge( array( 'Accept' => $accept ), $headers ),
 			)
 		);
 		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
 			return null;
 		}
-		$data = json_decode( wp_remote_retrieve_body( $res ), true );
+		return (string) wp_remote_retrieve_body( $res );
+	}
+
+	/** JSON variant of http_body(). */
+	public static function http_json( $url, array $headers = array() ) {
+		$body = self::http_body( $url, $headers );
+		if ( null === $body ) {
+			return null;
+		}
+		$data = json_decode( $body, true, 64 );
 		return is_array( $data ) ? $data : null;
 	}
 }
@@ -196,6 +256,10 @@ class CLIB_Lookup_OpenLibrary implements CLIB_Lookup_Provider {
 		return 'Open Library';
 	}
 
+	public function kind() {
+		return 'book';
+	}
+
 	public function allowed_hosts() {
 		return array( 'covers.openlibrary.org' );
 	}
@@ -205,6 +269,9 @@ class CLIB_Lookup_OpenLibrary implements CLIB_Lookup_Provider {
 	}
 
 	public function search( $type, $query ) {
+		if ( 'isbn' === $type && 12 === strlen( $query ) ) {
+			return array(); // A 12-digit code is a UPC barcode, not an ISBN.
+		}
 		return 'isbn' === $type ? $this->by_isbn( $query ) : $this->by_title( $query );
 	}
 

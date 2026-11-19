@@ -114,8 +114,16 @@ $clib_sort_link = function ( $col, $label ) use ( $clib_args, $clib_filters ) {
 					<option value="clear"><?php esc_html_e( '(Clear)', 'church-library' ); ?></option>
 					<?php echo CLIB_Form::lov_options( 'building', 0 ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 				</select></label>
-			<label><input type="checkbox" name="bulk_room_on" value="1" id="clib-bulk-room-on"> <?php esc_html_e( 'Set Room to', 'church-library' ); ?>
-				<input type="text" name="bulk_room" maxlength="100" class="regular-text" placeholder="<?php esc_attr_e( 'leave empty to clear', 'church-library' ); ?>"></label>
+			<label><?php esc_html_e( 'Room', 'church-library' ); ?>
+				<select name="bulk_room" class="clib-room">
+					<option value=""><?php esc_html_e( '— No change —', 'church-library' ); ?></option>
+					<option value="clear"><?php esc_html_e( '(Clear)', 'church-library' ); ?></option>
+					<?php
+					foreach ( CLIB_LOV::all( 'room', true ) as $clib_room ) {
+						echo '<option value="id:' . esc_attr( (int) $clib_room->id ) . '" data-building="' . esc_attr( (int) $clib_room->parent_id ) . '">' . esc_html( $clib_room->label ) . '</option>';
+					}
+					?>
+				</select></label>
 			<button type="submit" class="button button-primary"><?php esc_html_e( 'Review changes…', 'church-library' ); ?></button>
 		</p>
 		<p class="description"><?php esc_html_e( 'You will see how many items will change and confirm before anything is saved.', 'church-library' ); ?></p>

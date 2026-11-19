@@ -34,6 +34,25 @@ class CLIB_Form {
 		return $html;
 	}
 
+	/** <option> list of rooms; the value is the room name (that is what items store). */
+	public static function room_options( $selected, $placeholder = '' ) {
+		$html  = '' !== $placeholder ? '<option value="">' . esc_html( $placeholder ) . '</option>' : '';
+		$found = '' === (string) $selected;
+		foreach ( CLIB_LOV::all( 'room' ) as $row ) {
+			$is = (string) $selected === $row->label;
+			if ( ! $row->is_active && ! $is ) {
+				continue;
+			}
+			$found = $found || $is;
+			$html .= '<option value="' . esc_attr( $row->label ) . '" data-building="' . esc_attr( (int) $row->parent_id ) . '"' . selected( $is, true, false ) . '>' . esc_html( $row->label ) . '</option>';
+		}
+		if ( ! $found ) {
+			// Keep a legacy value visible so editing an item never silently drops it.
+			$html .= '<option value="' . esc_attr( $selected ) . '" selected>' . esc_html( $selected ) . '</option>';
+		}
+		return $html;
+	}
+
 	/** <option> list for a fixed label map. */
 	public static function map_options( array $map, $selected, $placeholder = '' ) {
 		$html = '' !== $placeholder ? '<option value="">' . esc_html( $placeholder ) . '</option>' : '';

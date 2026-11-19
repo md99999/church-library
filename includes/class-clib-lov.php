@@ -21,6 +21,7 @@ class CLIB_LOV {
 			'music_subcategory' => __( 'Music Sub-categories', 'church-library' ),
 			'church'            => __( 'Churches', 'church-library' ),
 			'building'          => __( 'Buildings', 'church-library' ),
+			'room'              => __( 'Rooms', 'church-library' ),
 			'classification'    => __( 'Classifications', 'church-library' ),
 			'liturgical_use'    => __( 'Liturgical Uses', 'church-library' ),
 			'condition'         => __( 'Conditions', 'church-library' ),
@@ -84,6 +85,13 @@ class CLIB_LOV {
 		return $labels[ $id ];
 	}
 
+	/** Room entry by name, preferring one that belongs to $building_id. */
+	public static function find_room( $label, $building_id ) {
+		global $wpdb;
+		$t = CLIB_DB::table( 'lov' );
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE list_type = 'room' AND label = %s ORDER BY (parent_id = %d) DESC, parent_id IS NULL DESC LIMIT 1", $label, (int) $building_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
 	public static function find_by_label( $type, $label ) {
 		global $wpdb;
 		$t = CLIB_DB::table( 'lov' );
@@ -128,6 +136,13 @@ class CLIB_LOV {
 					return new WP_Error( 'clib_lov', __( 'That ID prefix code is already used by another media type.', 'church-library' ) );
 				}
 			}
+		}
+		if ( 'room' === $type && ! empty( $raw['parent_id'] ) ) {
+			$parent = CLIB_Util::id_or_null( $raw['parent_id'] );
+			if ( $parent && ! self::in_list( $parent, 'building' ) ) {
+				return new WP_Error( 'clib_lov', __( 'Invalid building for room.', 'church-library' ) );
+			}
+			$data['parent_id'] = $parent;
 		}
 		if ( 'building' === $type && ! empty( $raw['parent_id'] ) ) {
 			$parent = CLIB_Util::id_or_null( $raw['parent_id'] );
@@ -192,6 +207,15 @@ class CLIB_LOV {
 	public static function update( $id, array $data ) {
 		global $wpdb;
 		self::$cache = array();
+		$before      = self::get( $id );
+		if ( $before && 'room' === $before->list_type && $before->label !== $data['label'] ) {
+			$items = CLIB_DB::table( 'items' );
+			if ( $before->parent_id ) {
+				$wpdb->query( $wpdb->prepare( "UPDATE $items SET room = %s WHERE room = %s AND building_id = %d", CLIB_Util::cap( $data['label'], 100 ), $before->label, (int) $before->parent_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			} else {
+				$wpdb->query( $wpdb->prepare( "UPDATE $items SET room = %s WHERE room = %s", CLIB_Util::cap( $data['label'], 100 ), $before->label ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			}
+		}
 		unset( $data['list_type'] ); // A row never changes list.
 		return false !== $wpdb->update(
 			CLIB_DB::table( 'lov' ),
@@ -236,6 +260,15 @@ class CLIB_LOV {
 					$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $loans WHERE return_condition = %s", $row->code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				}
 			}
+		}
+		if ( 'room' === $type ) {
+			$row = self::get( $id );
+			if ( $row ) {
+				$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $items WHERE room = %s", $row->label ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			}
+		}
+		if ( 'building' === $type ) {
+			$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $lov WHERE list_type = 'room' AND parent_id = %d", $id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
 		if ( 'church' === $type ) {
 			$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $lov WHERE list_type = 'building' AND parent_id = %d", $id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

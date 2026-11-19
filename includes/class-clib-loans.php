@@ -89,6 +89,21 @@ class CLIB_Loans {
 				$name = CLIB_Util::cap( sanitize_text_field( $user->display_name ), 150 );
 			}
 		}
+		// Optional email for borrowers with or without a site account.
+		$email_raw = isset( $raw['borrower_email'] ) && is_string( $raw['borrower_email'] ) ? trim( wp_unslash( $raw['borrower_email'] ) ) : '';
+		$email     = '';
+		if ( '' !== $email_raw ) {
+			// Validate what was typed, not a cleaned-up version of it: anything
+			// sanitize_email() would have to strip (control characters, quotes,
+			// angle brackets, spaces) means the whole value is rejected.
+			$email = sanitize_email( $email_raw );
+			if ( strlen( $email_raw ) > 100 || preg_match( '/[\x00-\x20\x7F]/', $email_raw ) || $email !== $email_raw || ! is_email( $email_raw ) ) {
+				return new WP_Error( 'clib_borrower', __( 'The borrower email address is not valid.', 'church-library' ) );
+			}
+		} elseif ( $user_id ) {
+			$u     = get_userdata( $user_id );
+			$email = $u && is_email( $u->user_email ) ? CLIB_Util::cap( $u->user_email, 100 ) : '';
+		}
 		if ( '' === $name ) {
 			return new WP_Error( 'clib_borrower', __( 'Borrower name is required.', 'church-library' ) );
 		}
@@ -114,13 +129,14 @@ class CLIB_Loans {
 				'item_id'          => (int) $item_id,
 				'borrower_name'    => $name,
 				'borrower_contact' => CLIB_Util::text( isset( $raw['borrower_contact'] ) ? $raw['borrower_contact'] : '', 150 ),
+				'borrower_email'   => $email,
 				'borrower_user_id' => $user_id,
 				'checked_out_at'   => CLIB_Util::now(),
 				'due_date'         => $due,
 				'checked_out_by'   => get_current_user_id(),
 				'out_notes'        => CLIB_Util::text( isset( $raw['out_notes'] ) ? $raw['out_notes'] : '', 500 ),
 			),
-			array( '%d', '%s', '%s', '%d', '%s', '%s', '%d', '%s' )
+			array( '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%d', '%s' )
 		);
 		if ( ! $ok ) {
 			$wpdb->query( 'ROLLBACK' );

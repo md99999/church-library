@@ -14,6 +14,10 @@ class CLIB_Items {
 	/** Max image upload size in bytes. */
 	const MAX_IMAGE_BYTES = 5242880;
 
+	/** Pixel limits for uploaded / imported images. */
+	const MAX_PIXELS_SIDE = 8000;
+	const MAX_PIXELS_AREA = 40000000;
+
 	/** When true, per-item audit entries are suppressed (bulk import logs one summary). */
 	public static $quiet = false;
 
@@ -101,6 +105,18 @@ class CLIB_Items {
 				$errors->add( 'building_id', __( 'Invalid building.', 'church-library' ) );
 			} elseif ( $b->parent_id && (int) $b->parent_id !== (int) $d['church_id'] ) {
 				$errors->add( 'building_id', __( 'That building belongs to a different church.', 'church-library' ) );
+			}
+		}
+
+		// Room comes from Library - List of Values; stored by name.
+		if ( '' !== $d['room'] ) {
+			$room = CLIB_LOV::find_room( $d['room'], (int) $d['building_id'] );
+			if ( ! $room ) {
+				$errors->add( 'room', __( 'Room is not in Library - List of Values.', 'church-library' ) );
+			} elseif ( $room->parent_id && (int) $room->parent_id !== (int) $d['building_id'] ) {
+				$errors->add( 'room', __( 'That room belongs to a different building.', 'church-library' ) );
+			} else {
+				$d['room'] = $room->label;
 			}
 		}
 
@@ -434,7 +450,16 @@ class CLIB_Items {
 			return $err;
 		}
 		clearstatcache( true, $file['tmp_name'] );
-		$_FILES[ $field ]['size'] = (int) filesize( $file['tmp_name'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$new_name = self::random_image_name( $file['tmp_name'] );
+		$err      = self::validate_image_file( $file['tmp_name'], $new_name ); // Check the re-encoded output too.
+		if ( is_wp_error( $err ) ) {
+			return $err;
+		}
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$_FILES[ $field ]['size'] = (int) filesize( $file['tmp_name'] );
+		$_FILES[ $field ]['name'] = $new_name; // The visitor's file name is never used on disk.
+		$_FILES[ $field ]['type'] = wp_check_filetype( $new_name, self::image_mimes() )['type'];
+		// phpcs:enable WordPress.Security.NonceVerification.Missing
 		self::protect_upload_dir();
 		add_filter( 'upload_dir', array( __CLASS__, 'upload_dir' ) );
 		// wp_handle_upload() (inside media_handle_upload) sanitizes the file name,
@@ -454,15 +479,61 @@ class CLIB_Items {
 
 	/** Content-based image validation (extension, real MIME and image header). */
 	public static function validate_image_file( $path, $name ) {
+		$name = (string) $name;
+		// Names: no null bytes or control characters, and no executable/script
+		// extension anywhere in the name (blocks "photo.php.jpg" tricks).
+		if ( preg_match( '/[\x00-\x1F]/', $name ) || preg_match( '/\.(php\d*|phtml|pht|phar|inc|pl|py|cgi|sh|bash|exe|dll|bat|cmd|com|msi|jar|js|mjs|html?|xhtml|shtml|svgz?|xml|asp|aspx|jsp|htaccess)(\.|$)/i', $name ) ) {
+			return new WP_Error( 'clib_upload', __( 'That file name is not allowed. Rename the photo (for example cover.jpg) and try again.', 'church-library' ) );
+		}
+		// Content must start with a real image signature (magic bytes).
+		$head = file_get_contents( $path, false, null, 0, 16 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( false === $head || ! self::magic_mime( $head ) ) {
+			return new WP_Error( 'clib_upload', __( 'The file is not a JPG, PNG, GIF or WebP image.', 'church-library' ) );
+		}
 		$check = wp_check_filetype_and_ext( $path, $name, self::image_mimes() );
 		if ( empty( $check['ext'] ) || empty( $check['type'] ) || ! in_array( $check['type'], self::image_mimes(), true ) ) {
 			return new WP_Error( 'clib_upload', __( 'Only JPG, PNG, GIF or WebP images are allowed.', 'church-library' ) );
 		}
 		$info = @getimagesize( $path ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
-		if ( false === $info || ! in_array( $info['mime'], self::image_mimes(), true ) ) {
+		if ( false === $info || ! in_array( $info['mime'], self::image_mimes(), true ) || self::magic_mime( $head ) !== $info['mime'] ) {
 			return new WP_Error( 'clib_upload', __( 'The file is not a valid image.', 'church-library' ) );
 		}
+		// Pixel caps stop "decompression bomb" images from exhausting memory.
+		if ( (int) $info[0] < 1 || (int) $info[1] < 1 || (int) $info[0] > self::MAX_PIXELS_SIDE || (int) $info[1] > self::MAX_PIXELS_SIDE || (int) $info[0] * (int) $info[1] > self::MAX_PIXELS_AREA ) {
+			return new WP_Error( 'clib_upload', __( 'The image is too large. Use a photo under 8,000 pixels on each side.', 'church-library' ) );
+		}
 		return true;
+	}
+
+	/** MIME type from the file's first bytes, or '' if it is not an allowed image. */
+	public static function magic_mime( $head ) {
+		$head = (string) $head;
+		if ( 0 === strncmp( $head, "\xFF\xD8\xFF", 3 ) ) {
+			return 'image/jpeg';
+		}
+		if ( 0 === strncmp( $head, "\x89PNG\r\n\x1A\n", 8 ) ) {
+			return 'image/png';
+		}
+		if ( 0 === strncmp( $head, 'GIF87a', 6 ) || 0 === strncmp( $head, 'GIF89a', 6 ) ) {
+			return 'image/gif';
+		}
+		if ( 0 === strncmp( $head, 'RIFF', 4 ) && 'WEBP' === substr( $head, 8, 4 ) ) {
+			return 'image/webp';
+		}
+		return '';
+	}
+
+	/** Random server-side file name with the extension forced from the real type. */
+	public static function random_image_name( $path ) {
+		$head = file_get_contents( $path, false, null, 0, 16 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$ext  = array(
+			'image/jpeg' => 'jpg',
+			'image/png'  => 'png',
+			'image/gif'  => 'gif',
+			'image/webp' => 'webp',
+		);
+		$mime = self::magic_mime( $head );
+		return 'clib-' . strtolower( wp_generate_password( 16, false, false ) ) . '.' . ( isset( $ext[ $mime ] ) ? $ext[ $mime ] : 'jpg' );
 	}
 
 	/**
@@ -534,9 +605,14 @@ class CLIB_Items {
 			wp_delete_file( $tmp );
 			return new WP_Error( 'clib_upload', __( 'No usable cover image was found.', 'church-library' ) );
 		}
-		$err = self::validate_image_file( $tmp, $name );
+		$err = self::validate_image_file( $tmp, 'cover.jpg' );
 		if ( ! is_wp_error( $err ) ) {
 			$err = self::reencode_image( $tmp );
+		}
+		if ( ! is_wp_error( $err ) ) {
+			clearstatcache( true, $tmp );
+			$name = self::random_image_name( $tmp );
+			$err  = self::validate_image_file( $tmp, $name );
 		}
 		if ( is_wp_error( $err ) ) {
 			wp_delete_file( $tmp );

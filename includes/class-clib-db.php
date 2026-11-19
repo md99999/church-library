@@ -107,6 +107,7 @@ class CLIB_DB {
   item_id bigint(20) unsigned NOT NULL,
   borrower_name varchar(150) NOT NULL,
   borrower_contact varchar(150) NOT NULL DEFAULT '',
+  borrower_email varchar(100) NOT NULL DEFAULT '',
   borrower_user_id bigint(20) unsigned NULL,
   checked_out_at datetime NOT NULL,
   due_date date NULL,
@@ -119,7 +120,8 @@ class CLIB_DB {
   PRIMARY KEY  (id),
   KEY item_id (item_id),
   KEY returned_at (returned_at),
-  KEY due_date (due_date)
+  KEY due_date (due_date),
+  KEY borrower_email (borrower_email)
 ) $charset;";
 
 		$sql[] = "CREATE TABLE $lov (
@@ -251,6 +253,31 @@ class CLIB_DB {
 						'list_type'  => $type,
 						'code'       => $code,
 						'label'      => $label,
+						'sort_order' => $order,
+					)
+				);
+				$order += 10;
+			}
+		}
+
+		// Added in DB version 5: Room becomes a managed list. Seed it once from the
+		// room names already on items, one entry per (room, building) pair.
+		if ( 0 === CLIB_LOV::count( 'room' ) ) {
+			global $wpdb;
+			$items = self::table( 'items' );
+			$lov   = self::table( 'lov' );
+			$pairs = $wpdb->get_results( "SELECT DISTINCT TRIM(i.room) AS room, b.id AS building_id FROM $items i LEFT JOIN $lov b ON b.id = i.building_id AND b.list_type = 'building' WHERE TRIM(i.room) <> '' ORDER BY room LIMIT 2000" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$order = 10;
+			foreach ( (array) $pairs as $p ) {
+				$label = CLIB_Util::cap( sanitize_text_field( (string) $p->room ), 100 );
+				if ( '' === $label ) {
+					continue;
+				}
+				CLIB_LOV::insert(
+					array(
+						'list_type'  => 'room',
+						'label'      => $label,
+						'parent_id'  => $p->building_id ? (int) $p->building_id : null,
 						'sort_order' => $order,
 					)
 				);

@@ -95,7 +95,7 @@ if ( '' !== $clib_code ) :
 			<?php foreach ( $clib_active as $clib_l ) : ?>
 				<tr class="<?php echo ( $clib_l->due_date && $clib_l->due_date < current_time( 'Y-m-d' ) ) ? 'clib-overdue' : ''; ?>">
 					<td><?php echo esc_html( $clib_l->borrower_name ); ?></td>
-					<td><?php echo esc_html( $clib_l->borrower_contact ); ?></td>
+					<td><?php echo esc_html( trim( $clib_l->borrower_email . ' ' . $clib_l->borrower_contact ) ); ?></td>
 					<td><?php echo esc_html( CLIB_Util::fmt_date( $clib_l->due_date ) ); ?></td>
 				</tr>
 			<?php endforeach; ?>

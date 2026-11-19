@@ -77,6 +77,12 @@ class CLIB_Import {
 		return $s;
 	}
 
+	/** Per-row error for a value that is not in the List of Values. */
+	private static function unknown( $column, $value ) {
+		/* translators: 1: column name 2: value */
+		return new WP_Error( 'clib_import', sprintf( __( '%1$s "%2$s" is not in Library - List of Values. Add it there or correct the cell.', 'church-library' ), $column, CLIB_Util::cap( sanitize_text_field( (string) $value ), 60 ) ) );
+	}
+
 	/** Map a label or key (any case) to a whitelisted key, or $default. */
 	private static function key_from_label( $value, array $labels, $default = '' ) {
 		$v = strtolower( trim( (string) $value ) );
@@ -245,11 +251,12 @@ class CLIB_Import {
 		}
 
 		$media = $existing ? (int) $existing->media_type_id : (int) $defaults['media_type_id'];
-		if ( ! empty( $raw['media_type'] ) ) {
+		if ( isset( $raw['media_type'] ) && '' !== trim( $raw['media_type'] ) ) {
 			$m = CLIB_LOV::find_by_label( 'media_type', CLIB_Util::cap( trim( $raw['media_type'] ), 100 ) );
-			if ( $m ) {
-				$media = (int) $m->id;
+			if ( ! $m ) {
+				return self::unknown( __( 'Media Type', 'church-library' ), $raw['media_type'] );
 			}
+			$media = (int) $m->id;
 		}
 		$in['media_type_id'] = $media;
 
@@ -259,8 +266,11 @@ class CLIB_Import {
 			if ( '' === $label ) {
 				$church = $existing ? 0 : $church;
 			} else {
-				$c      = CLIB_LOV::find_by_label( 'church', $label );
-				$church = $c ? (int) $c->id : $church;
+				$c = CLIB_LOV::find_by_label( 'church', $label );
+				if ( ! $c ) {
+					return self::unknown( __( 'Church Name', 'church-library' ), $label );
+				}
+				$church = (int) $c->id;
 			}
 		}
 		$in['church_id'] = $church;
@@ -271,15 +281,21 @@ class CLIB_Import {
 			if ( '' === $label ) {
 				$building = $existing ? 0 : $building;
 			} else {
-				$b        = self::find_building( $label, $church );
-				$building = $b ? (int) $b->id : $building;
+				$b = self::find_building( $label, $church );
+				if ( ! $b ) {
+					return self::unknown( __( 'Building', 'church-library' ), $label );
+				}
+				$building = (int) $b->id;
 			}
 		}
 		$in['building_id'] = $building;
 
 		if ( isset( $raw['subcategory'] ) ) {
 			$label                = CLIB_Util::cap( trim( $raw['subcategory'] ), 100 );
-			$sc                   = '' === $label ? null : CLIB_LOV::find_by_label( 'music_subcategory', $label );
+			$sc = '' === $label ? null : CLIB_LOV::find_by_label( 'music_subcategory', $label );
+			if ( '' !== $label && ! $sc ) {
+				return self::unknown( __( 'Music Sub-category', 'church-library' ), $label );
+			}
 			$in['subcategory_id'] = $sc ? (int) $sc->id : 0;
 		}
 
@@ -303,9 +319,19 @@ class CLIB_Import {
 
 		if ( isset( $raw['item_condition'] ) ) {
 			$in['item_condition'] = self::key_from_label( $raw['item_condition'], CLIB_Util::condition_labels() );
+			if ( '' === $in['item_condition'] && '' !== trim( $raw['item_condition'] ) ) {
+				return self::unknown( __( 'Condition', 'church-library' ), $raw['item_condition'] );
+			}
 		}
 		if ( isset( $raw['difficulty'] ) ) {
 			$in['difficulty'] = self::key_from_label( $raw['difficulty'], CLIB_Util::difficulty_labels() );
+			if ( '' === $in['difficulty'] && '' !== trim( $raw['difficulty'] ) ) {
+				return self::unknown( __( 'Difficulty Level', 'church-library' ), $raw['difficulty'] );
+			}
+		}
+		// Music-only columns on a non-music row would be silently dropped: say so instead.
+		if ( ! CLIB_LOV::is_music_type( $media ) && ( ( isset( $raw['subcategory'] ) && '' !== trim( $raw['subcategory'] ) ) || ( isset( $raw['difficulty'] ) && '' !== trim( $raw['difficulty'] ) ) ) ) {
+			return new WP_Error( 'clib_import', __( 'Music Sub-category and Difficulty Level only apply to music media types. Set Media Type to a music type or clear those cells.', 'church-library' ) );
 		}
 		if ( isset( $raw['storage_status'] ) ) {
 			// Checked In / Checked Out follow loans; only "Not Available" is set by hand.
@@ -316,6 +342,9 @@ class CLIB_Import {
 			$in['acquired_date'] = $ts ? gmdate( 'Y-m-d', $ts ) : '';
 		}
 
+		if ( isset( $raw['room'] ) && '' !== trim( $raw['room'] ) && ! CLIB_LOV::find_room( CLIB_Util::cap( trim( $raw['room'] ), 100 ), $building ) ) {
+			return self::unknown( __( 'Room', 'church-library' ), $raw['room'] );
+		}
 		foreach ( array( 'title', 'creator', 'publisher', 'description', 'notes', 'barcode', 'call_number', 'identifier', 'room', 'location_code', 'copies', 'owned_by', 'liturgical_use', 'inventory_notes', 'cost' ) as $k ) {
 			if ( isset( $raw[ $k ] ) ) {
 				$in[ $k ] = wp_slash( $raw[ $k ] );
