@@ -1,0 +1,90 @@
+/* Church Library front-end catalog. Inherits the theme's fonts and colours. */
+.clib .clib-search { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.clib .clib-search input[type=search] { flex: 1 1 220px; }
+.clib .clib-count { opacity: .75; }
+.clib .clib-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.clib .clib-card a { display: flex; gap: 10px; padding: 10px; border: 1px solid rgba(0,0,0,.12); border-radius: 6px; text-decoration: none; color: inherit; height: 100%; box-sizing: border-box; }
+.clib .clib-card a:hover, .clib .clib-card a:focus { border-color: currentColor; }
+.clib .clib-thumb { flex: 0 0 60px; }
+.clib .clib-thumb img { width: 60px; height: 80px; object-fit: cover; }
+.clib .clib-card-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.clib .clib-creator, .clib .clib-meta { font-size: .875em; opacity: .8; }
+.clib .clib-status { align-self: flex-start; font-size: .75em; padding: 1px 8px; border-radius: 10px; background: #dcfce7; color: #14532d; margin-top: 4px; }
+.clib .clib-status-checked_out { background: #fef3c7; color: #78350f; }
+.clib .clib-status-not_available { background: #fee2e2; color: #7f1d1d; }
+.clib .clib-item-head { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+.clib .clib-item-image img { max-width: 260px; height: auto; }
+.clib .clib-fields th { text-align: left; padding-right: 16px; white-space: nowrap; vertical-align: top; }
+.clib .clib-pages { margin-top: 16px; }
+.clib .clib-pages .page-numbers { padding: 2px 8px; }
+
+/* Navigation, notices, buttons. */
+.clib .clib-nav { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; padding: 6px; border: 1px solid rgba(0,0,0,.12); border-radius: 6px; }
+.clib .clib-nav a { padding: 4px 10px; border-radius: 4px; text-decoration: none; }
+.clib .clib-nav a.is-current { background: rgba(0,0,0,.08); font-weight: 600; }
+.clib .clib-notice { padding: 8px 12px; margin: 0 0 12px; border-left: 4px solid #00a32a; background: #edfaef; color: #1d2327; }
+.clib .clib-notice-error { border-color: #d63638; background: #fcf0f1; }
+.clib .clib-notice-warning { border-color: #dba617; background: #fcf9e8; }
+.clib .clib-btn { display: inline-block; padding: 6px 14px; border-radius: 4px; border: 1px solid currentColor; background: transparent; cursor: pointer; text-decoration: none; font: inherit; line-height: 1.4; }
+.clib .clib-btn-small { padding: 2px 8px; font-size: .875em; }
+.clib .clib-btn-alt { opacity: .85; }
+.clib .clib-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.clib .clib-reset { align-self: center; font-size: .875em; }
+.clib .clib-panel { padding: 10px 12px; border: 1px solid rgba(0,0,0,.12); border-radius: 6px; margin-bottom: 12px; }
+.clib .clib-locked { padding: 12px 16px; border: 1px solid rgba(0,0,0,.12); border-radius: 6px; }
+
+/* Forms and tables. */
+.clib .clib-form input[type=text], .clib .clib-form input[type=date], .clib .clib-form select { width: 100%; max-width: 420px; box-sizing: border-box; }
+.clib .required { color: #d63638; }
+.clib .description { display: block; font-size: .85em; opacity: .75; }
+.clib .clib-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+.clib .clib-table th, .clib .clib-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(0,0,0,.1); vertical-align: top; }
+.clib .clib-scroll { overflow-x: auto; }
+.clib tr.clib-overdue td { background: rgba(214,54,56,.08); }
+.clib .clib-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.clib .clib-tabs a { padding: 4px 10px; border: 1px solid rgba(0,0,0,.12); border-radius: 4px; text-decoration: none; }
+.clib .clib-tabs a.is-current { font-weight: 600; background: rgba(0,0,0,.06); }
+.clib .clib-report-actions form { display: flex; gap: 8px; margin: 8px 0 12px; }
+
+/* Shared item form. */
+.clib .clib-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.clib .clib-section { border: 1px solid rgba(0,0,0,.12); border-radius: 6px; padding: 4px 16px 12px; }
+.clib .clib-field { margin: 0 0 10px; }
+.clib .clib-field label { display: block; font-weight: 600; margin-bottom: 2px; }
+.clib .clib-field input[type=text], .clib .clib-field input[type=number], .clib .clib-field input[type=date], .clib .clib-field select, .clib .clib-field textarea { width: 100%; box-sizing: border-box; }
+.clib .clib-field input[type=number] { max-width: 120px; }
+.clib .clib-lookup-row { display: flex; gap: 6px; }
+.clib .clib-lookup-row input { flex: 1; }
+.clib .clib-lookup-results { border: 1px solid rgba(0,0,0,.15); padding: 8px 12px; margin: -4px 0 12px; max-height: 360px; overflow: auto; }
+.clib .clib-results { list-style: none; margin: 0; padding: 0; }
+.clib .clib-results li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,.1); }
+.clib .clib-results li > div { flex: 1; }
+.clib .clib-results img { width: 36px; height: auto; }
+.clib .clib-cover-preview img { max-width: 150px; height: auto; }
+.clib [hidden] { display: none !important; }
+
+/* How To. */
+.clib .clib-toc { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 12px; border: 1px solid rgba(0,0,0,.12); border-radius: 6px; margin-bottom: 16px; }
+.clib .clib-toc strong { flex-basis: 100%; }
+.clib .clib-howto h2 { scroll-margin-top: 80px; }
+
+@media print {
+	.clib .clib-nav, .clib .clib-tabs, .clib .clib-report-actions, .clib .clib-search { display: none !important; }
+}
+
+/* Form controls: keep a fixed size on focus whatever the theme does
+   (no zoom, scale, padding or border jumps that cover the label above). */
+.clib label { display: inline-block; margin-bottom: 4px; line-height: 1.4; }
+.clib p > label, .clib .clib-field > label { display: block; }
+.clib input[type=text], .clib input[type=email], .clib input[type=search], .clib input[type=number],
+.clib input[type=date], .clib input[type=password], .clib select, .clib textarea {
+	box-sizing: border-box; font-size: 16px; line-height: 1.4; padding: 6px 8px; margin: 2px 0 0;
+	border: 1px solid rgba(0,0,0,.35); border-radius: 4px; transform: none !important; transition: none !important;
+	min-height: 0; height: auto; position: static;
+}
+.clib input:focus, .clib select:focus, .clib textarea:focus {
+	transform: none !important; padding: 6px 8px; border-width: 1px; box-shadow: none;
+	outline: 2px solid #2271b1; outline-offset: 1px;
+}
+.clib button:focus, .clib .clib-btn:focus { transform: none !important; outline: 2px solid #2271b1; outline-offset: 2px; }
+.clib .clib-form p, .clib .clib-field { margin: 0 0 14px; }
