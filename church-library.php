@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'CLIB_VERSION', '1.1.0' );
-define( 'CLIB_DB_VERSION', '2' );
+define( 'CLIB_DB_VERSION', '3' );
 define( 'CLIB_FILE', __FILE__ );
 define( 'CLIB_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CLIB_URL', plugin_dir_url( __FILE__ ) );

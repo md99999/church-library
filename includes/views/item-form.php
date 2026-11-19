@@ -12,6 +12,14 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+// "Edit list" link beside each dropdown for people who manage the List of Values.
+$clib_lov_link = function ( $list ) {
+	if ( ! current_user_can( 'clib_manage_lists' ) ) {
+		return '';
+	}
+	return ' <a class="clib-edit-list" href="' . esc_url( admin_url( 'admin.php?page=clib-lists&list=' . rawurlencode( $list ) ) ) . '" target="_blank" rel="noopener">' . esc_html__( 'Edit list', 'church-library' ) . '</a>';
+};
 ?>
 <form method="post" action="<?php echo esc_url( $clib_form_url ); ?>" enctype="multipart/form-data" class="clib-item-form" id="clib-item-form">
 	<?php echo $clib_form_hidden; // phpcs:ignore WordPress.Security.EscapeOutput -- built from nonce fields and esc_attr by the caller. ?>
@@ -33,7 +41,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<div id="clib-lookup-results" class="clib-lookup-results" aria-live="polite" hidden></div>
 
 			<p class="clib-field">
-				<label for="clib-media"><?php esc_html_e( 'Media Type', 'church-library' ); ?> <span class="required">*</span></label>
+				<label for="clib-media"><?php esc_html_e( 'Media Type', 'church-library' ); ?> <span class="required">*</span><?php echo $clib_lov_link( 'media_type' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
 				<select id="clib-media" name="media_type_id" required><?php echo CLIB_Form::lov_options( 'media_type', $clib_f( 'media_type_id' ), __( 'Choose...', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 				<?php if ( $clib_item ) : ?>
 					<span class="description"><?php esc_html_e( 'The Item ID keeps its original prefix if the media type changes.', 'church-library' ); ?></span>
@@ -42,12 +50,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 			<div class="clib-music-only">
 				<p class="clib-field">
-					<label for="clib-sub"><?php esc_html_e( 'Music Sub-category', 'church-library' ); ?></label>
+					<label for="clib-sub"><?php esc_html_e( 'Music Sub-category', 'church-library' ); ?><?php echo $clib_lov_link( 'music_subcategory' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
 					<select id="clib-sub" name="subcategory_id"><?php echo CLIB_Form::lov_options( 'music_subcategory', $clib_f( 'subcategory_id' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 				</p>
 				<p class="clib-field">
-					<label for="clib-diff"><?php esc_html_e( 'Difficulty Level', 'church-library' ); ?></label>
-					<select id="clib-diff" name="difficulty"><?php echo CLIB_Form::map_options( CLIB_Util::difficulty_labels(), $clib_f( 'difficulty' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+					<label for="clib-diff"><?php esc_html_e( 'Difficulty Level', 'church-library' ); ?><?php echo $clib_lov_link( 'difficulty' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
+					<select id="clib-diff" name="difficulty"><?php echo CLIB_Form::map_options( CLIB_Util::difficulty_labels( true ), $clib_f( 'difficulty' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 				</p>
 			</div>
 
@@ -67,11 +75,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</span>
 			</p>
 			<p class="clib-field">
-				<label for="clib-class"><?php esc_html_e( 'Classification', 'church-library' ); ?></label>
+				<label for="clib-class"><?php esc_html_e( 'Classification', 'church-library' ); ?><?php echo $clib_lov_link( 'classification' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
 				<select id="clib-class" name="classification_id"><?php echo CLIB_Form::lov_options( 'classification', $clib_f( 'classification_id' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 			</p>
 			<p class="clib-field">
-				<label for="clib-lit"><?php esc_html_e( 'Liturgical Use', 'church-library' ); ?></label>
+				<label for="clib-lit"><?php esc_html_e( 'Liturgical Use', 'church-library' ); ?><?php echo $clib_lov_link( 'liturgical_use' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
 				<input type="text" id="clib-lit" name="liturgical_use" maxlength="255" list="clib-lit-list" value="<?php echo esc_attr( $clib_f( 'liturgical_use' ) ); ?>">
 				<datalist id="clib-lit-list">
 					<?php foreach ( CLIB_LOV::all( 'liturgical_use', true ) as $clib_row ) : ?>
@@ -92,11 +100,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<div class="clib-section">
 			<h2><?php esc_html_e( 'Location', 'church-library' ); ?></h2>
 			<p class="clib-field">
-				<label for="clib-church"><?php esc_html_e( 'Church Name', 'church-library' ); ?></label>
+				<label for="clib-church"><?php esc_html_e( 'Church Name', 'church-library' ); ?><?php echo $clib_lov_link( 'church' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
 				<select id="clib-church" name="church_id" class="clib-church"><?php echo CLIB_Form::lov_options( 'church', $clib_f( 'church_id' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 			</p>
 			<p class="clib-field">
-				<label for="clib-building"><?php esc_html_e( 'Building', 'church-library' ); ?></label>
+				<label for="clib-building"><?php esc_html_e( 'Building', 'church-library' ); ?><?php echo $clib_lov_link( 'building' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
 				<select id="clib-building" name="building_id" class="clib-building"><?php echo CLIB_Form::lov_options( 'building', $clib_f( 'building_id' ), __( '(none)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 			</p>
 			<p class="clib-field">
@@ -133,8 +141,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<select id="clib-status" name="storage_status"><?php echo CLIB_Form::map_options( $clib_status_opts, $clib_cur_status ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 			</p>
 			<p class="clib-field">
-				<label for="clib-cond"><?php esc_html_e( 'Condition', 'church-library' ); ?></label>
-				<select id="clib-cond" name="item_condition"><?php echo CLIB_Form::map_options( CLIB_Util::condition_labels(), $clib_f( 'item_condition' ), __( '(not set)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+				<label for="clib-cond"><?php esc_html_e( 'Condition', 'church-library' ); ?><?php echo $clib_lov_link( 'condition' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
+				<select id="clib-cond" name="item_condition"><?php echo CLIB_Form::map_options( CLIB_Util::condition_labels( true ), $clib_f( 'item_condition' ), __( '(not set)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 			</p>
 			<p class="clib-field">
 				<label for="clib-owned"><?php esc_html_e( 'Owned By', 'church-library' ); ?></label>

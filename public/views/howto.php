@@ -128,7 +128,7 @@ $clib_days = (int) CLIB_Settings::get( 'loan_days' );
 
 	<h2 id="clib-access"><?php esc_html_e( 'Who can do what', 'church-library' ); ?></h2>
 	<?php
-	$clib_p( __( 'What you can do depends on your website role. An administrator sets this under <em>Library - Settings</em>. By default: subscribers can browse the catalog; contributors and authors can also add and edit items, check items in and out, and see reports; editors can also delete items, import spreadsheets and manage the lists of churches, buildings and media types; administrators can do everything.', 'church-library' ) );
+	$clib_p( __( 'What you can do depends on your website role. An administrator sets this under <em>Library - Settings</em>. By default: subscribers can browse the catalog; contributors and authors can also add and edit items, check items in and out, and see reports; editors can also delete items, import spreadsheets and manage the List of Values (the dropdown choices such as churches, buildings and media types); administrators can do everything.', 'church-library' ) );
 	$clib_p( __( 'Borrowers\' names are only shown to library team members. Please keep them private.', 'church-library' ) );
 	?>
 </div>

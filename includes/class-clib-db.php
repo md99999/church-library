@@ -210,6 +210,9 @@ class CLIB_DB {
 				array( '', 'Funerals', 0 ),
 				array( '', 'Baptism', 0 ),
 				array( '', 'Communion', 0 ),
+				array( '', 'Church History', 0 ),
+				array( '', 'General', 0 ),
+				array( '', 'Biblical', 0 ),
 			),
 		);
 
@@ -225,6 +228,29 @@ class CLIB_DB {
 						'code'       => $row[0],
 						'label'      => $row[1],
 						'is_music'   => $row[2],
+						'sort_order' => $order,
+					)
+				);
+				$order += 10;
+			}
+		}
+
+		// Added in DB version 3: Condition and Music Difficulty become editable lists.
+		// Codes match the values already stored on items.
+		foreach ( array(
+			'condition'  => CLIB_Util::default_conditions(),
+			'difficulty' => CLIB_Util::default_difficulties(),
+		) as $type => $values ) {
+			if ( CLIB_LOV::count( $type ) > 0 ) {
+				continue;
+			}
+			$order = 10;
+			foreach ( $values as $code => $label ) {
+				CLIB_LOV::insert(
+					array(
+						'list_type'  => $type,
+						'code'       => $code,
+						'label'      => $label,
 						'sort_order' => $order,
 					)
 				);

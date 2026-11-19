@@ -1,6 +1,6 @@
 <?php
 /**
- * Library - Lists (admin-managed lists of values).
+ * Library - List of Values (admin-managed dropdown values).
  *
  * @package ChurchLibrary
  */
@@ -14,7 +14,8 @@ $clib_type  = CLIB_Util::enum( CLIB_Util::get( 'list' ), array_keys( $clib_types
 $clib_rows  = CLIB_LOV::all( $clib_type );
 $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 ?>
-<h1><?php esc_html_e( 'Library - Lists', 'church-library' ); ?></h1>
+<h1><?php esc_html_e( 'Library - List of Values', 'church-library' ); ?></h1>
+<p><?php esc_html_e( 'Add, rename, reorder, hide or delete the values offered in the library\'s dropdowns. Untick "Active" to hide a value from dropdowns without changing items that already use it. Values that are in use cannot be deleted.', 'church-library' ); ?></p>
 
 <nav class="nav-tab-wrapper">
 	<?php foreach ( $clib_types as $clib_k => $clib_label ) : ?>
@@ -26,6 +27,8 @@ $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 	<p class="description"><?php esc_html_e( 'The ID prefix is used for new Item IDs, e.g. BOOK-000123. Tick "Music" for types that use the music sub-category and difficulty fields.', 'church-library' ); ?></p>
 <?php elseif ( 'building' === $clib_type ) : ?>
 	<p class="description"><?php esc_html_e( 'Link a building to its church so the item form only offers the right buildings.', 'church-library' ); ?></p>
+<?php elseif ( in_array( $clib_type, CLIB_LOV::coded_types(), true ) ) : ?>
+	<p class="description"><?php esc_html_e( 'Renaming a value updates every item that uses it. The stored value is set when an entry is created and never changes. Storage Status (Checked In / Checked Out / Not Available) is fixed because check in and check out depend on it.', 'church-library' ); ?></p>
 <?php elseif ( 'liturgical_use' === $clib_type ) : ?>
 	<p class="description"><?php esc_html_e( 'These are suggestions on the item form; staff can still type another value.', 'church-library' ); ?></p>
 <?php endif; ?>
@@ -39,6 +42,9 @@ $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 		<?php endif; ?>
 		<?php if ( 'building' === $clib_type ) : ?>
 			<th><?php esc_html_e( 'Church', 'church-library' ); ?></th>
+		<?php endif; ?>
+		<?php if ( in_array( $clib_type, CLIB_LOV::coded_types(), true ) ) : ?>
+			<th><?php esc_html_e( 'Stored value', 'church-library' ); ?></th>
 		<?php endif; ?>
 		<th><?php esc_html_e( 'Sort', 'church-library' ); ?></th>
 		<th><?php esc_html_e( 'Active', 'church-library' ); ?></th>
@@ -55,6 +61,9 @@ $clib_post  = esc_url( admin_url( 'admin-post.php' ) );
 			<?php endif; ?>
 			<?php if ( 'building' === $clib_type ) : ?>
 				<td><select form="<?php echo esc_attr( $clib_form ); ?>" name="parent_id"><?php echo CLIB_Admin::lov_options( 'church', $clib_row->parent_id, __( '(any)', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select></td>
+			<?php endif; ?>
+			<?php if ( in_array( $clib_type, CLIB_LOV::coded_types(), true ) ) : ?>
+				<td><code><?php echo esc_html( $clib_row->code ); ?></code></td>
 			<?php endif; ?>
 			<td><input form="<?php echo esc_attr( $clib_form ); ?>" type="number" name="sort_order" min="0" max="100000" class="small-text" value="<?php echo esc_attr( (int) $clib_row->sort_order ); ?>"></td>
 			<td><input form="<?php echo esc_attr( $clib_form ); ?>" type="checkbox" name="is_active" value="1" <?php checked( (int) $clib_row->is_active, 1 ); ?>></td>

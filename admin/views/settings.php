@@ -28,7 +28,9 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 	<?php wp_nonce_field( 'clib_save_settings' ); ?>
 	<input type="hidden" name="action" value="clib_save_settings">
 
-	<h2><?php esc_html_e( 'General', 'church-library' ); ?></h2>
+	<p><?php esc_html_e( 'Dropdown values (churches, buildings, media types, classifications, conditions and more) are managed under', 'church-library' ); ?> <a href="<?php echo esc_url( admin_url( 'admin.php?page=clib-lists' ) ); ?>"><?php esc_html_e( 'Library - List of Values', 'church-library' ); ?></a>.</p>
+
+<h2><?php esc_html_e( 'General', 'church-library' ); ?></h2>
 	<table class="form-table" role="presentation">
 		<tr>
 			<th scope="row"><?php esc_html_e( 'Public catalog', 'church-library' ); ?></th>

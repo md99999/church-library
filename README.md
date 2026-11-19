@@ -13,11 +13,11 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 ## Features
 
 - **Catalog** with title, description, notes, creator/author, publisher, media type, music sub-category and difficulty (music only), condition, liturgical use, classification, owned by, ISBN/identifier, barcode, call #, church, building, room, location ID, number of copies, storage status, inventory notes, cost, acquired date and an image.
-- **Item IDs** are generated automatically from the media type prefix and a sequence number, e.g. `BOOK-000123`, `MUSIC-000007`. The prefix is set per media type under *Library - Lists*.
+- **Item IDs** are generated automatically from the media type prefix and a sequence number, e.g. `BOOK-000123`, `MUSIC-000007`. The prefix is set per media type under *Library - List of Values*.
 - **Locations**: church → building → room → location ID. The location ID is free-form, so you can use an aisle-bay-shelf scheme such as `A-12-3`.
 - **Check out / check in** desk with borrower name and contact, due dates, multiple copies per item, overdue highlighting, return condition and full loan history. Status changes between *Checked In* and *Checked Out* automatically; *Not Available* is set by staff.
 - **Reports**: collection summary (by media type, church, building, status, condition, totals), currently checked out, overdue, circulation history by date range, and an inventory/shelf list sorted by location. Every report can be downloaded as CSV or printed.
-- **Lists of values** managed by admins: media types, music sub-categories, churches, buildings (linked to a church), classifications and liturgical uses. Starting values are seeded on activation.
+- **List of Values** managed by admins: every dropdown (media types, music sub-categories, churches, buildings linked to a church, classifications, liturgical uses, conditions and music difficulty levels) can be added to, renamed, reordered, hidden or deleted when unused. Starting values are seeded on activation.
 - **CSV import** for existing spreadsheets (save the sheet as *CSV UTF-8*). Headings such as `Barcode`, `Call #`, `Title`, `Author's Name`, `Classification` and `Cost` are recognised automatically, with preview mode and duplicate skipping.
 - **Title / ISBN lookup** on the item form. It shows matches already in your catalog and results from Open Library, and fills in title, author, publisher, ISBN, description and cover image. Lookup sources are pluggable (see *Extending the lookup*).
 - **Public catalog** page (`Library - Catalog`, shortcode `[church_library]`) with search and filters. It can be restricted to logged-in users.
@@ -34,7 +34,7 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 
 1. Copy this folder to `wp-content/plugins/church-library` (or zip it and use *Plugins → Add New → Upload*).
 2. Activate **Church Library**.
-3. Go to **Library → Lists** and add your churches and buildings. Review the media types and their ID prefixes.
+3. Go to **Library → List of Values** and add your churches and buildings. Review the media types and their ID prefixes.
 4. Go to **Library → Settings** to choose whether the catalog is public and to adjust role permissions.
 5. Optional: **Library → Import** your existing spreadsheet.
 
@@ -84,7 +84,7 @@ Under the **Library** menu in the dashboard:
 | Library - Add Item / Edit Item | Add & edit items |
 | Library - Check Out / In | Check out / check in |
 | Library - Reports | View reports |
-| Library - Lists | Manage lists of values |
+| Library - List of Values | Manage lists of values |
 | Library - Import | Import CSV |
 | Library - Settings | Administrator only |
 | Library - Audit Log | Administrator only |
@@ -95,7 +95,7 @@ Deleting items, importing, lists of values, settings and the audit log are avail
 
 Default permissions (editable in *Library - Settings*):
 
-| Role | View | Add & edit | Delete | Check out / in | Reports | Import | Lists |
+| Role | View | Add & edit | Delete | Check out / in | Reports | Import / export | List of Values |
 | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
 | Administrator | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Editor | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |

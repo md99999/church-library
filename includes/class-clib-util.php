@@ -18,12 +18,6 @@ class CLIB_Util {
 	/** Storage status values (whitelist). */
 	const STATUSES = array( 'available', 'checked_out', 'not_available' );
 
-	/** Condition values (whitelist). */
-	const CONDITIONS = array( 'poor', 'fair', 'good', 'excellent' );
-
-	/** Difficulty values for music (whitelist). */
-	const DIFFICULTIES = array( 'easy', 'medium', 'medium_hard', 'hard' );
-
 	public static function status_labels() {
 		return array(
 			'available'     => __( 'Checked In', 'church-library' ),
@@ -32,7 +26,8 @@ class CLIB_Util {
 		);
 	}
 
-	public static function condition_labels() {
+	/** Built-in condition values (used to seed the list and as a fallback). */
+	public static function default_conditions() {
 		return array(
 			'poor'      => __( 'Poor', 'church-library' ),
 			'fair'      => __( 'Fair', 'church-library' ),
@@ -41,13 +36,41 @@ class CLIB_Util {
 		);
 	}
 
-	public static function difficulty_labels() {
+	/** Built-in music difficulty values (used to seed the list and as a fallback). */
+	public static function default_difficulties() {
 		return array(
 			'easy'        => __( 'Easy', 'church-library' ),
 			'medium'      => __( 'Medium', 'church-library' ),
 			'medium_hard' => __( 'Medium Hard', 'church-library' ),
 			'hard'        => __( 'Hard', 'church-library' ),
 		);
+	}
+
+	/**
+	 * Condition values from Library - List of Values (stored code => label).
+	 *
+	 * @param bool $active_only Only entries shown in dropdowns.
+	 */
+	public static function condition_labels( $active_only = false ) {
+		return self::coded_list( 'condition', $active_only, self::default_conditions() );
+	}
+
+	/** Music difficulty values from Library - List of Values (stored code => label). */
+	public static function difficulty_labels( $active_only = false ) {
+		return self::coded_list( 'difficulty', $active_only, self::default_difficulties() );
+	}
+
+	private static function coded_list( $type, $active_only, array $fallback ) {
+		if ( ! class_exists( 'CLIB_LOV' ) ) {
+			return $fallback;
+		}
+		$out = array();
+		foreach ( CLIB_LOV::all( $type, $active_only ) as $row ) {
+			if ( '' !== $row->code ) {
+				$out[ $row->code ] = $row->label;
+			}
+		}
+		return ( $out || CLIB_LOV::count( $type ) > 0 ) ? $out : $fallback;
 	}
 
 	public static function label( $map, $key ) {

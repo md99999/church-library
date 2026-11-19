@@ -42,7 +42,7 @@ $clib_today = current_time( 'Y-m-d' );
 			</p>
 			<p>
 				<label><?php esc_html_e( 'Condition on return', 'church-library' ); ?><br>
-					<select name="return_condition"><?php echo CLIB_Admin::map_options( CLIB_Util::condition_labels(), '', __( '(unchanged)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select></label>
+					<select name="return_condition"><?php echo CLIB_Admin::map_options( CLIB_Util::condition_labels( true ), '', __( '(unchanged)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select></label>
 			</p>
 			<p>
 				<label><?php esc_html_e( 'Notes', 'church-library' ); ?><br>

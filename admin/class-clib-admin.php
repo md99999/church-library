@@ -22,7 +22,7 @@ class CLIB_Admin {
 			'clib-item'        => array( __( 'Add Item', 'church-library' ), 'clib_manage_items', 'item-edit.php' ),
 			'clib-circulation' => array( __( 'Check Out / In', 'church-library' ), 'clib_circulate', 'circulation.php' ),
 			'clib-reports'     => array( __( 'Reports', 'church-library' ), 'clib_reports', 'reports.php' ),
-			'clib-lists'       => array( __( 'Lists', 'church-library' ), 'clib_manage_lists', 'lists.php' ),
+			'clib-lists'       => array( __( 'List of Values', 'church-library' ), 'clib_manage_lists', 'lists.php' ),
 			'clib-import'      => array( __( 'Import / Export', 'church-library' ), 'clib_import', 'import.php' ),
 			'clib-settings'    => array( __( 'Settings', 'church-library' ), 'manage_options', 'settings.php' ),
 			'clib-audit'       => array( __( 'Audit Log', 'church-library' ), 'manage_options', 'audit.php' ),

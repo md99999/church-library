@@ -12,6 +12,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class CLIB_LOV {
 
+	/** Per-request cache of lists; cleared on every write. */
+	private static $cache = array();
+
 	public static function types() {
 		return array(
 			'media_type'        => __( 'Media Types', 'church-library' ),
@@ -20,7 +23,14 @@ class CLIB_LOV {
 			'building'          => __( 'Buildings', 'church-library' ),
 			'classification'    => __( 'Classifications', 'church-library' ),
 			'liturgical_use'    => __( 'Liturgical Uses', 'church-library' ),
+			'condition'         => __( 'Conditions', 'church-library' ),
+			'difficulty'        => __( 'Music Difficulty Levels', 'church-library' ),
 		);
+	}
+
+	/** Lists whose entries are stored on items by a fixed code rather than by id. */
+	public static function coded_types() {
+		return array( 'condition', 'difficulty' );
 	}
 
 	public static function valid_type( $type ) {
@@ -36,10 +46,9 @@ class CLIB_LOV {
 	/** All entries of a list, keyed by id. */
 	public static function all( $type, $active_only = false ) {
 		global $wpdb;
-		static $cache = array();
 		$key = $type . ( $active_only ? '1' : '0' );
-		if ( isset( $cache[ $key ] ) ) {
-			return $cache[ $key ];
+		if ( isset( self::$cache[ $key ] ) ) {
+			return self::$cache[ $key ];
 		}
 		$t   = CLIB_DB::table( 'lov' );
 		$sql = "SELECT * FROM $t WHERE list_type = %s" . ( $active_only ? ' AND is_active = 1' : '' ) . ' ORDER BY sort_order, label';
@@ -47,7 +56,7 @@ class CLIB_LOV {
 		foreach ( $wpdb->get_results( $wpdb->prepare( $sql, $type ) ) as $row ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 			$out[ (int) $row->id ] = $row;
 		}
-		$cache[ $key ] = $out;
+		self::$cache[ $key ] = $out;
 		return $out;
 	}
 
@@ -127,6 +136,22 @@ class CLIB_LOV {
 			}
 			$data['parent_id'] = $parent;
 		}
+		if ( in_array( $type, self::coded_types(), true ) ) {
+			$current = $id ? self::get( $id ) : null;
+			if ( $current && '' !== $current->code ) {
+				$data['code'] = $current->code; // Stored on items: never changes once created.
+			} else {
+				$base = substr( sanitize_key( str_replace( array( ' ', '-' ), '_', strtolower( $data['label'] ) ) ), 0, 20 );
+				$base = '' === $base ? 'value' : $base;
+				$code = $base;
+				$n    = 2;
+				$used = wp_list_pluck( self::all( $type ), 'code' );
+				while ( in_array( $code, $used, true ) ) {
+					$code = substr( $base, 0, 17 ) . '_' . $n++;
+				}
+				$data['code'] = $code;
+			}
+		}
 		foreach ( self::all( $type ) as $other ) {
 			if ( (int) $other->id !== (int) $id && 0 === strcasecmp( $other->label, $data['label'] ) && (int) $other->parent_id === (int) $data['parent_id'] ) {
 				return new WP_Error( 'clib_lov', __( 'An entry with that label already exists.', 'church-library' ) );
@@ -137,6 +162,7 @@ class CLIB_LOV {
 
 	public static function insert( array $data ) {
 		global $wpdb;
+		self::$cache = array();
 		$data = wp_parse_args(
 			$data,
 			array(
@@ -165,6 +191,7 @@ class CLIB_LOV {
 
 	public static function update( $id, array $data ) {
 		global $wpdb;
+		self::$cache = array();
 		unset( $data['list_type'] ); // A row never changes list.
 		return false !== $wpdb->update(
 			CLIB_DB::table( 'lov' ),
@@ -199,6 +226,17 @@ class CLIB_LOV {
 			$col    = $map[ $type ]; // Whitelisted column name.
 			$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $items WHERE $col = %d", $id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
+		if ( in_array( $type, self::coded_types(), true ) ) {
+			$row = self::get( $id );
+			if ( $row && '' !== $row->code ) {
+				$col    = 'condition' === $type ? 'item_condition' : 'difficulty'; // Fixed map.
+				$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $items WHERE $col = %s", $row->code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				if ( 'condition' === $type ) {
+					$loans  = CLIB_DB::table( 'loans' );
+					$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $loans WHERE return_condition = %s", $row->code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				}
+			}
+		}
 		if ( 'church' === $type ) {
 			$count += (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $lov WHERE list_type = 'building' AND parent_id = %d", $id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
@@ -207,6 +245,7 @@ class CLIB_LOV {
 
 	public static function delete( $id ) {
 		global $wpdb;
+		self::$cache = array();
 		return (bool) $wpdb->delete( CLIB_DB::table( 'lov' ), array( 'id' => (int) $id ), array( '%d' ) );
 	}
 }

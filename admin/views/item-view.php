@@ -107,7 +107,7 @@ if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 									<input type="hidden" name="action" value="clib_checkin">
 									<input type="hidden" name="loan_id" value="<?php echo esc_attr( (int) $clib_loan->id ); ?>">
 									<input type="hidden" name="return" value="view">
-									<select name="return_condition"><?php echo CLIB_Admin::map_options( CLIB_Util::condition_labels(), '', __( 'Condition (unchanged)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+									<select name="return_condition"><?php echo CLIB_Admin::map_options( CLIB_Util::condition_labels( true ), '', __( 'Condition (unchanged)', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 									<input type="text" name="return_notes" maxlength="500" placeholder="<?php esc_attr_e( 'Notes', 'church-library' ); ?>">
 									<button class="button"><?php esc_html_e( 'Check In', 'church-library' ); ?></button>
 								</form>

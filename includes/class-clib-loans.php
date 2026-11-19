@@ -145,7 +145,7 @@ class CLIB_Loans {
 		if ( ! $loan || null !== $loan->returned_at ) {
 			return new WP_Error( 'clib_loan', __( 'That loan is not open.', 'church-library' ) );
 		}
-		$condition = CLIB_Util::enum( isset( $raw['return_condition'] ) ? $raw['return_condition'] : '', CLIB_Util::CONDITIONS, '' );
+		$condition = CLIB_Util::enum( isset( $raw['return_condition'] ) ? $raw['return_condition'] : '', array_map( 'strval', array_keys( CLIB_Util::condition_labels() ) ), '' );
 		$updated   = $wpdb->query(
 			$wpdb->prepare(
 				'UPDATE ' . CLIB_DB::table( 'loans' ) . ' SET returned_at = %s, returned_to = %d, return_condition = %s, return_notes = %s WHERE id = %d AND returned_at IS NULL', // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
