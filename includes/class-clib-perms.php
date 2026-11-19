@@ -23,7 +23,7 @@ class CLIB_Perms {
 			'clib_delete_items' => __( 'Delete items', 'church-library' ),
 			'clib_circulate'    => __( 'Check out / check in', 'church-library' ),
 			'clib_reports'      => __( 'View reports', 'church-library' ),
-			'clib_import'       => __( 'Import CSV', 'church-library' ),
+			'clib_import'       => __( 'Import / export CSV', 'church-library' ),
 			'clib_manage_lists' => __( 'Manage lists of values', 'church-library' ),
 			'clib_bulk_edit'    => __( 'Bulk edit locations', 'church-library' ),
 		);

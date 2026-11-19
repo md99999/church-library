@@ -14,7 +14,22 @@ if ( is_array( $clib_result ) ) {
 	delete_transient( 'clib_import_' . get_current_user_id() );
 }
 ?>
-<h1><?php esc_html_e( 'Library - Import', 'church-library' ); ?></h1>
+<h1><?php esc_html_e( 'Library - Import / Export', 'church-library' ); ?></h1>
+
+<h2><?php esc_html_e( 'Export the catalog', 'church-library' ); ?></h2>
+<p><?php esc_html_e( 'Download every item, with every field, as a CSV file that opens in Excel. You can edit it and import it back below with "Update items whose Item ID already exists" ticked. Spreadsheet formulas are neutralised so a cell can never run as a formula when the file is opened.', 'church-library' ); ?></p>
+<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="clib-filters">
+	<?php wp_nonce_field( 'clib_export_catalog' ); ?>
+	<input type="hidden" name="action" value="clib_export_catalog">
+	<select name="media_type_id"><?php echo CLIB_Form::lov_options( 'media_type', 0, __( 'All media types', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<select name="church_id" class="clib-church"><?php echo CLIB_Form::lov_options( 'church', 0, __( 'All churches', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<select name="building_id" class="clib-building"><?php echo CLIB_Form::lov_options( 'building', 0, __( 'All buildings', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<select name="status"><?php echo CLIB_Form::map_options( CLIB_Util::status_labels(), '', __( 'Any status', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<button class="button button-primary"><?php esc_html_e( 'Download CSV', 'church-library' ); ?></button>
+</form>
+
+<hr>
+<h2><?php esc_html_e( 'Import from CSV', 'church-library' ); ?></h2>
 
 <?php if ( is_array( $clib_result ) ) : ?>
 	<div class="notice <?php echo $clib_result['errors'] ? 'notice-warning' : 'notice-success'; ?>">
@@ -22,10 +37,10 @@ if ( is_array( $clib_result ) ) {
 			<?php
 			if ( $clib_result['dry_run'] ) {
 				/* translators: 1: rows 2: would import 3: skipped */
-				echo esc_html( sprintf( __( 'Preview only: %1$d rows read, %2$d would be imported, %3$d skipped.', 'church-library' ), $clib_result['rows'], $clib_result['imported'], $clib_result['skipped'] ) );
+				echo esc_html( sprintf( __( 'Preview only: %1$d rows read, %2$d would be added, %4$d would be updated, %3$d skipped.', 'church-library' ), $clib_result['rows'], $clib_result['imported'], $clib_result['skipped'], isset( $clib_result['updated'] ) ? $clib_result['updated'] : 0 ) );
 			} else {
 				/* translators: 1: rows 2: imported 3: skipped */
-				echo esc_html( sprintf( __( '%1$d rows read, %2$d imported, %3$d skipped.', 'church-library' ), $clib_result['rows'], $clib_result['imported'], $clib_result['skipped'] ) );
+				echo esc_html( sprintf( __( '%1$d rows read, %2$d added, %4$d updated, %3$d skipped.', 'church-library' ), $clib_result['rows'], $clib_result['imported'], $clib_result['skipped'], isset( $clib_result['updated'] ) ? $clib_result['updated'] : 0 ) );
 			}
 			?>
 		</strong></p>
@@ -41,7 +56,7 @@ if ( is_array( $clib_result ) ) {
 <?php endif; ?>
 
 <p><?php esc_html_e( 'Import items from a CSV file. In Excel, open your sheet and use File > Save As > "CSV UTF-8". The first row must be column headings.', 'church-library' ); ?></p>
-<p><?php esc_html_e( 'Recognised headings include: Title (required), Author\'s Name / Author / Creator, Publisher, Description, Notes, Barcode, Call #, Classification, Cost, ISBN / Identifier, Media Type, Church, Building, Room, Location ID, Copies, Condition, Owned By, Liturgical Use, Inventory Notes. Other columns are ignored.', 'church-library' ); ?></p>
+<p><?php esc_html_e( 'Recognised headings include: Item ID, Title (required), Author\'s Name / Author / Creator, Publisher, Description, Notes, Barcode, Call #, Classification, Cost, ISBN / Identifier, Media Type, Music Sub-category, Difficulty Level, Church, Building, Room, Location ID, Copies, Condition, Storage Status, Owned By, Liturgical Use, Acquired Date, Inventory Notes. Other columns are ignored.', 'church-library' ); ?></p>
 
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" class="clib-section">
 	<?php wp_nonce_field( 'clib_import' ); ?>
@@ -69,6 +84,7 @@ if ( is_array( $clib_result ) ) {
 			<td>
 				<label><input type="checkbox" name="skip_dupes" value="1" checked> <?php esc_html_e( 'Skip rows whose barcode (or title + author) already exists', 'church-library' ); ?></label><br>
 				<label><input type="checkbox" name="add_classes" value="1" checked> <?php esc_html_e( 'Add unknown classifications to the Classifications list', 'church-library' ); ?></label><br>
+				<label><input type="checkbox" name="update_existing" value="1"> <?php esc_html_e( 'Update items whose Item ID already exists (for files exported above). Columns left out of the file keep their current values.', 'church-library' ); ?></label><br>
 				<label><input type="checkbox" name="dry_run" value="1"> <?php esc_html_e( 'Preview only (validate without saving)', 'church-library' ); ?></label>
 			</td>
 		</tr>

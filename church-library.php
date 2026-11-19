@@ -48,6 +48,7 @@ require_once CLIB_DIR . 'includes/class-clib-reports.php';
 require_once CLIB_DIR . 'includes/class-clib-lookup.php';
 require_once CLIB_DIR . 'includes/class-clib-import.php';
 require_once CLIB_DIR . 'includes/class-clib-bulk.php';
+require_once CLIB_DIR . 'includes/class-clib-export.php';
 require_once CLIB_DIR . 'public/class-clib-public.php';
 
 if ( is_admin() ) {

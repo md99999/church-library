@@ -23,7 +23,7 @@ class CLIB_Admin {
 			'clib-circulation' => array( __( 'Check Out / In', 'church-library' ), 'clib_circulate', 'circulation.php' ),
 			'clib-reports'     => array( __( 'Reports', 'church-library' ), 'clib_reports', 'reports.php' ),
 			'clib-lists'       => array( __( 'Lists', 'church-library' ), 'clib_manage_lists', 'lists.php' ),
-			'clib-import'      => array( __( 'Import', 'church-library' ), 'clib_import', 'import.php' ),
+			'clib-import'      => array( __( 'Import / Export', 'church-library' ), 'clib_import', 'import.php' ),
 			'clib-settings'    => array( __( 'Settings', 'church-library' ), 'manage_options', 'settings.php' ),
 			'clib-audit'       => array( __( 'Audit Log', 'church-library' ), 'manage_options', 'audit.php' ),
 		);
@@ -48,6 +48,7 @@ class CLIB_Admin {
 			'clib_bulk_cancel',
 			'clib_export',
 			'clib_import',
+			'clib_export_catalog',
 		);
 		foreach ( $actions as $a ) {
 			add_action( 'admin_post_' . $a, array( __CLASS__, 'handle_' . substr( $a, 5 ) ) );
@@ -398,6 +399,11 @@ class CLIB_Admin {
 		CLIB_Reports::send_csv( $key, CLIB_Reports::run( $key, $args ) );
 	}
 
+	public static function handle_export_catalog() {
+		self::guard( 'clib_export_catalog', 'clib_import' );
+		CLIB_Export::send( CLIB_Export::filters( $_POST ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- guard() verified; filters() sanitizes.
+	}
+
 	public static function handle_import() {
 		self::guard( 'clib_import', 'clib_import' );
 		$defaults = array(
@@ -407,6 +413,7 @@ class CLIB_Admin {
 			'skip_dupes'    => (bool) CLIB_Util::post( 'skip_dupes' ),
 			'add_classes'   => (bool) CLIB_Util::post( 'add_classes' ),
 			'dry_run'       => (bool) CLIB_Util::post( 'dry_run' ),
+			'update_existing' => (bool) CLIB_Util::post( 'update_existing' ),
 		);
 		if ( ! CLIB_LOV::in_list( $defaults['media_type_id'], 'media_type' ) ) {
 			self::notice( __( 'Choose a default media type.', 'church-library' ), 'error' );

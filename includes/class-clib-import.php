@@ -49,11 +49,53 @@ class CLIB_Import {
 			'ownedby'         => 'owned_by',
 			'liturgicaluse'   => 'liturgical_use',
 			'inventorynotes'  => 'inventory_notes',
+			'itemid'          => 'item_code',
+			'itemcode'        => 'item_code',
+			'musicsubcategory' => 'subcategory',
+			'subcategory'     => 'subcategory',
+			'difficulty'      => 'difficulty',
+			'difficultylevel' => 'difficulty',
+			'storagestatus'   => 'storage_status',
+			'status'          => 'storage_status',
+			'acquireddate'    => 'acquired_date',
+			'acquired'        => 'acquired_date',
 		);
 	}
 
 	private static function norm_header( $h ) {
 		return preg_replace( '/[^a-z0-9]/', '', strtolower( (string) $h ) );
+	}
+
+	/**
+	 * Undo the export's formula neutralisation: "'=..." becomes "=...". The value is
+	 * still only ever stored as text and escaped on output.
+	 */
+	private static function unneutralise( $s ) {
+		if ( strlen( $s ) > 1 && "'" === $s[0] && in_array( $s[1], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+			return substr( $s, 1 );
+		}
+		return $s;
+	}
+
+	/** Map a label or key (any case) to a whitelisted key, or $default. */
+	private static function key_from_label( $value, array $labels, $default = '' ) {
+		$v = strtolower( trim( (string) $value ) );
+		if ( '' === $v ) {
+			return $default;
+		}
+		foreach ( $labels as $k => $label ) {
+			if ( $v === $k || strtolower( $label ) === $v ) {
+				return $k;
+			}
+		}
+		return $default;
+	}
+
+	/** Find a building by label, preferring one that belongs to $church_id. */
+	private static function find_building( $label, $church_id ) {
+		global $wpdb;
+		$t = CLIB_DB::table( 'lov' );
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE list_type = 'building' AND label = %s ORDER BY (parent_id = %d) DESC, parent_id IS NULL DESC LIMIT 1", $label, (int) $church_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
 	private static function to_utf8( $s ) {
@@ -122,14 +164,16 @@ class CLIB_Import {
 				$cols[ $idx ] = $map[ $key ];
 			}
 		}
-		if ( ! in_array( 'title', $cols, true ) ) {
+		// A Title column is required, except for update-only files keyed by Item ID.
+		if ( ! in_array( 'title', $cols, true ) && ! ( ! empty( $defaults['update_existing'] ) && in_array( 'item_code', $cols, true ) ) ) {
 			fclose( $fh ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-			return new WP_Error( 'clib_import', __( 'The CSV needs a "Title" column.', 'church-library' ) );
+			return new WP_Error( 'clib_import', __( 'The CSV needs a "Title" column (or an "Item ID" column with "Update items whose Item ID already exists" ticked).', 'church-library' ) );
 		}
 
 		$summary = array(
 			'rows'     => 0,
 			'imported' => 0,
+			'updated'  => 0,
 			'skipped'  => 0,
 			'errors'   => array(),
 			'dry_run'  => ! empty( $defaults['dry_run'] ),
@@ -152,7 +196,7 @@ class CLIB_Import {
 
 			$raw = array();
 			foreach ( $cols as $idx => $fieldname ) {
-				$raw[ $fieldname ] = isset( $row[ $idx ] ) ? self::to_utf8( $row[ $idx ] ) : '';
+				$raw[ $fieldname ] = isset( $row[ $idx ] ) ? self::unneutralise( self::to_utf8( $row[ $idx ] ) ) : '';
 			}
 			$result = self::import_row( $raw, $defaults );
 			if ( is_wp_error( $result ) ) {
@@ -163,6 +207,8 @@ class CLIB_Import {
 				}
 			} elseif ( 'dupe' === $result ) {
 				++$summary['skipped'];
+			} elseif ( 'updated' === $result ) {
+				++$summary['updated'];
 			} else {
 				++$summary['imported'];
 			}
@@ -171,18 +217,34 @@ class CLIB_Import {
 		CLIB_Items::$quiet = false;
 
 		if ( ! $summary['dry_run'] ) {
-			CLIB_Audit::log( 'import', 'item', 0, sprintf( '%s: %d imported, %d skipped', sanitize_file_name( $name ), $summary['imported'], $summary['skipped'] ) );
+			CLIB_Audit::log( 'import', 'item', 0, sprintf( '%s: %d imported, %d updated, %d skipped', sanitize_file_name( $name ), $summary['imported'], $summary['updated'], $summary['skipped'] ) );
 		}
 		return $summary;
 	}
 
-	/** @return int|string|WP_Error item id, 'dupe' or error. */
+	/** @return int|string|WP_Error item id, 'dupe', 'updated' or error. */
 	private static function import_row( array $raw, array $defaults ) {
 		global $wpdb;
-		// CSV values are not slashed, but the validators unslash; add slashes so content round-trips.
-		$in = array();
 
-		$media = (int) $defaults['media_type_id'];
+		// Update mode: a row whose Item ID already exists updates that item. Columns
+		// missing from the file keep their current values.
+		$existing = null;
+		if ( ! empty( $defaults['update_existing'] ) && ! empty( $raw['item_code'] ) ) {
+			$code = CLIB_Util::token( trim( $raw['item_code'] ), 32 );
+			if ( '' !== $code ) {
+				$existing = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . CLIB_DB::table( 'items' ) . ' WHERE item_code = %s', $code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			}
+		}
+
+		// The validators unslash, so start from slashed values.
+		$in = array();
+		if ( $existing ) {
+			foreach ( (array) $existing as $k => $v ) {
+				$in[ $k ] = wp_slash( null === $v ? '' : (string) $v );
+			}
+		}
+
+		$media = $existing ? (int) $existing->media_type_id : (int) $defaults['media_type_id'];
 		if ( ! empty( $raw['media_type'] ) ) {
 			$m = CLIB_LOV::find_by_label( 'media_type', CLIB_Util::cap( trim( $raw['media_type'] ), 100 ) );
 			if ( $m ) {
@@ -191,43 +253,67 @@ class CLIB_Import {
 		}
 		$in['media_type_id'] = $media;
 
-		$church = (int) $defaults['church_id'];
-		if ( ! empty( $raw['church'] ) ) {
-			$c = CLIB_LOV::find_by_label( 'church', CLIB_Util::cap( trim( $raw['church'] ), 100 ) );
-			if ( $c ) {
-				$church = (int) $c->id;
+		$church = $existing ? (int) $existing->church_id : (int) $defaults['church_id'];
+		if ( isset( $raw['church'] ) ) {
+			$label = CLIB_Util::cap( trim( $raw['church'] ), 100 );
+			if ( '' === $label ) {
+				$church = $existing ? 0 : $church;
+			} else {
+				$c      = CLIB_LOV::find_by_label( 'church', $label );
+				$church = $c ? (int) $c->id : $church;
 			}
 		}
 		$in['church_id'] = $church;
 
-		$building = (int) $defaults['building_id'];
-		if ( ! empty( $raw['building'] ) ) {
-			$b = CLIB_LOV::find_by_label( 'building', CLIB_Util::cap( trim( $raw['building'] ), 100 ) );
-			if ( $b ) {
-				$building = (int) $b->id;
+		$building = $existing ? (int) $existing->building_id : (int) $defaults['building_id'];
+		if ( isset( $raw['building'] ) ) {
+			$label = CLIB_Util::cap( trim( $raw['building'] ), 100 );
+			if ( '' === $label ) {
+				$building = $existing ? 0 : $building;
+			} else {
+				$b        = self::find_building( $label, $church );
+				$building = $b ? (int) $b->id : $building;
 			}
 		}
 		$in['building_id'] = $building;
 
-		if ( ! empty( $raw['classification'] ) ) {
+		if ( isset( $raw['subcategory'] ) ) {
+			$label                = CLIB_Util::cap( trim( $raw['subcategory'] ), 100 );
+			$sc                   = '' === $label ? null : CLIB_LOV::find_by_label( 'music_subcategory', $label );
+			$in['subcategory_id'] = $sc ? (int) $sc->id : 0;
+		}
+
+		if ( isset( $raw['classification'] ) ) {
 			$label = CLIB_Util::text( wp_slash( $raw['classification'] ), 100 );
-			$cl    = CLIB_LOV::find_by_label( 'classification', $label );
+			$cl    = '' === $label ? null : CLIB_LOV::find_by_label( 'classification', $label );
 			if ( ! $cl && ! empty( $defaults['add_classes'] ) && '' !== $label && empty( $defaults['dry_run'] ) ) {
-				$new_id = CLIB_LOV::insert(
+				$in['classification_id'] = CLIB_LOV::insert(
 					array(
 						'list_type'  => 'classification',
 						'label'      => $label,
 						'sort_order' => 1000,
 					)
 				);
-				$in['classification_id'] = $new_id;
 			} elseif ( $cl ) {
 				$in['classification_id'] = (int) $cl->id;
+			} elseif ( '' === $label ) {
+				$in['classification_id'] = 0;
 			}
 		}
 
 		if ( isset( $raw['item_condition'] ) ) {
-			$in['item_condition'] = strtolower( trim( $raw['item_condition'] ) );
+			$in['item_condition'] = self::key_from_label( $raw['item_condition'], CLIB_Util::condition_labels() );
+		}
+		if ( isset( $raw['difficulty'] ) ) {
+			$in['difficulty'] = self::key_from_label( $raw['difficulty'], CLIB_Util::difficulty_labels() );
+		}
+		if ( isset( $raw['storage_status'] ) ) {
+			// Checked In / Checked Out follow loans; only "Not Available" is set by hand.
+			$in['storage_status'] = 'not_available' === self::key_from_label( $raw['storage_status'], CLIB_Util::status_labels() ) ? 'not_available' : 'available';
+		}
+		if ( isset( $raw['acquired_date'] ) ) {
+			$ts                  = '' === trim( $raw['acquired_date'] ) ? false : strtotime( $raw['acquired_date'] );
+			$in['acquired_date'] = $ts ? gmdate( 'Y-m-d', $ts ) : '';
 		}
 
 		foreach ( array( 'title', 'creator', 'publisher', 'description', 'notes', 'barcode', 'call_number', 'identifier', 'room', 'location_code', 'copies', 'owned_by', 'liturgical_use', 'inventory_notes', 'cost' ) as $k ) {
@@ -239,6 +325,13 @@ class CLIB_Import {
 		$data = CLIB_Items::validate( $in );
 		if ( is_wp_error( $data ) ) {
 			return $data;
+		}
+
+		if ( $existing ) {
+			if ( ! empty( $defaults['dry_run'] ) ) {
+				return 'updated';
+			}
+			return CLIB_Items::update( (int) $existing->id, $data ) ? 'updated' : new WP_Error( 'clib_import', __( 'Could not update the item.', 'church-library' ) );
 		}
 
 		if ( ! empty( $defaults['skip_dupes'] ) ) {
