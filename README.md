@@ -54,7 +54,29 @@ All schema and seed SQL lives in PHP (`includes/class-clib-db.php`); the plugin 
 
 ## Pages
 
-Admin screens (under the **Library** menu):
+### Website pages (front end)
+
+Activation creates one WordPress page per task, each holding a shortcode. Team members can do their everyday work from these pages without opening the WordPress dashboard. A navigation bar on every library page shows only the pages the visitor is allowed to open.
+
+| Page | Shortcode | Who can open it |
+| --- | --- | --- |
+| Library - Catalog | `[church_library]` | Everyone when *Public catalog* is on, otherwise logged-in users with *View catalog* |
+| Library - Check Out | `[clib_checkout]` | *Check out / check in* |
+| Library - Check In | `[clib_checkin]` | *Check out / check in* |
+| Library - Add or Edit Item | `[clib_manage]` | *Add & edit items* |
+| Library - My Loans | `[clib_my_loans]` | Logged-in users with *View catalog* (loans linked to their account) |
+| Library - Reports | `[clib_reports]` | *View reports* |
+| Library - How To | `[clib_howto]` | Same as the catalog: a plain-language guide for team members |
+
+Existing pages are reused and never overwritten. If a page is deleted or renamed, press **Create / repair library pages** in *Library - Settings*. Add the pages you want to a menu under *Appearance*.
+
+Every page checks access on the server before rendering anything. Every form posts back to its own page with an action-bound nonce, and the handler checks the nonce and the capability again before it does anything.
+
+When checking an item out you can enter a site username or email. The loan is then linked to that account and shows on the borrower's *Library - My Loans* page.
+
+### Admin screens
+
+Under the **Library** menu in the dashboard:
 
 | Screen | Required permission |
 | --- | --- |
@@ -67,7 +89,7 @@ Admin screens (under the **Library** menu):
 | Library - Settings | Administrator only |
 | Library - Audit Log | Administrator only |
 
-Front end: a page titled **Library - Catalog** is created on activation with the `[church_library]` shortcode. You can place the shortcode on any other page too.
+Deleting items, importing, lists of values, settings and the audit log are available only in the dashboard.
 
 ## Roles and permissions
 

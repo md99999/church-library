@@ -123,6 +123,64 @@ class CLIB_Items {
 		return $errors->has_errors() ? $errors : $d;
 	}
 
+	/**
+	 * Full save from a submitted item form (admin or front end): validate,
+	 * handle the image (upload > lookup cover > remove) and create/update.
+	 * Callers must verify the nonce and clib_manage_items first.
+	 *
+	 * @param array $post Raw (slashed) request data.
+	 * @param int   $id   Existing item id or 0.
+	 * @return array|WP_Error [ 'id' => int, 'notices' => [ [type, message] ] ]
+	 */
+	public static function save_from_request( array $post, $id ) {
+		$id   = (int) $id;
+		$item = $id ? self::get( $id ) : null;
+		if ( $id && ! $item ) {
+			return new WP_Error( 'clib_missing', __( 'Item not found.', 'church-library' ) );
+		}
+		$data = self::validate( $post );
+		if ( is_wp_error( $data ) ) {
+			set_transient( 'clib_form_' . get_current_user_id(), self::$last_clean, 5 * MINUTE_IN_SECONDS );
+			return $data;
+		}
+		$notices = array();
+
+		$image = self::handle_image_upload( 'clib_image' );
+		if ( is_wp_error( $image ) ) {
+			$notices[] = array( 'error', $image->get_error_message() );
+			$image     = 0;
+		}
+		if ( ! $image ) {
+			$provider = isset( $post['cover_provider'] ) && is_string( $post['cover_provider'] ) ? sanitize_key( $post['cover_provider'] ) : '';
+			$ref      = CLIB_Util::text( isset( $post['cover_ref'] ) ? $post['cover_ref'] : '', 100 );
+			if ( '' !== $provider && '' !== $ref ) {
+				$image = CLIB_Lookup::import_cover( $provider, $ref, $data['title'] );
+				if ( is_wp_error( $image ) ) {
+					$notices[] = array( 'warning', __( 'The cover image could not be imported; you can upload one instead.', 'church-library' ) );
+					$image     = 0;
+				}
+			}
+		}
+		if ( $image ) {
+			$data['image_id'] = (int) $image;
+		} elseif ( $item && ! empty( $post['remove_image'] ) ) {
+			$data['image_id'] = null;
+		}
+
+		if ( $item ) {
+			self::update( $id, $data );
+			$notices[] = array( 'success', __( 'Item updated.', 'church-library' ) );
+			return array( 'id' => $id, 'notices' => $notices );
+		}
+		$new_id = self::create( $data );
+		if ( is_wp_error( $new_id ) ) {
+			return $new_id;
+		}
+		/* translators: %s: item id */
+		$notices[] = array( 'success', sprintf( __( 'Item %s added.', 'church-library' ), self::get( $new_id )->item_code ) );
+		return array( 'id' => $new_id, 'notices' => $notices );
+	}
+
 	/** Generate the next item code for a media type, e.g. BOOK-000123. */
 	public static function next_code( $media_type_id ) {
 		global $wpdb;

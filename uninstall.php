@@ -21,4 +21,6 @@ if ( CLIB_Settings::get( 'uninstall_delete' ) ) {
 	CLIB_DB::drop_all();
 	delete_option( CLIB_Settings::OPTION );
 	delete_option( 'clib_db_version' );
+	delete_option( 'clib_page_ids' );
+	delete_option( 'clib_pages_version' );
 }

@@ -3,7 +3,7 @@
  * Plugin Name:       Church Library
  * Plugin URI:        https://github.com/md99999/church-library
  * Description:       Multi-church library catalog with check out / check in, locations, reports, CSV import and role-based permissions.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Bill Mantz
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // No direct access.
 }
 
-define( 'CLIB_VERSION', '1.0.0' );
+define( 'CLIB_VERSION', '1.1.0' );
 define( 'CLIB_DB_VERSION', '1' );
 define( 'CLIB_FILE', __FILE__ );
 define( 'CLIB_DIR', plugin_dir_path( __FILE__ ) );
@@ -37,6 +37,8 @@ define( 'CLIB_URL', plugin_dir_url( __FILE__ ) );
 require_once CLIB_DIR . 'includes/class-clib-util.php';
 require_once CLIB_DIR . 'includes/class-clib-db.php';
 require_once CLIB_DIR . 'includes/class-clib-settings.php';
+require_once CLIB_DIR . 'includes/class-clib-form.php';
+require_once CLIB_DIR . 'includes/class-clib-pages.php';
 require_once CLIB_DIR . 'includes/class-clib-perms.php';
 require_once CLIB_DIR . 'includes/class-clib-audit.php';
 require_once CLIB_DIR . 'includes/class-clib-lov.php';

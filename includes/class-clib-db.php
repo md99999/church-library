@@ -39,6 +39,11 @@ class CLIB_DB {
 			self::install();
 			CLIB_Perms::ensure_admin_caps();
 		}
+		// 1.1 added a page per task; create them once for sites upgraded from 1.0.
+		if ( get_option( 'clib_pages_version' ) !== CLIB_VERSION ) {
+			add_action( 'init', array( 'CLIB_Pages', 'setup' ), 20 );
+			update_option( 'clib_pages_version', CLIB_VERSION, false );
+		}
 	}
 
 	public static function install() {

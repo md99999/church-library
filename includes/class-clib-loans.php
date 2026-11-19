@@ -51,6 +51,14 @@ class CLIB_Loans {
 		return $wpdb->get_results( $sql ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	}
 
+	/** Loans linked to a site account (current and past). */
+	public static function for_user( $user_id, $limit = 100 ) {
+		global $wpdb;
+		$l = CLIB_DB::table( 'loans' );
+		$i = CLIB_DB::table( 'items' );
+		return $wpdb->get_results( $wpdb->prepare( "SELECT l.*, i.item_code, i.title FROM $l l JOIN $i i ON i.id = l.item_id WHERE l.borrower_user_id = %d ORDER BY l.returned_at IS NULL DESC, l.checked_out_at DESC LIMIT %d", $user_id, $limit ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
 	/**
 	 * Check out one copy.
 	 *
@@ -67,6 +75,20 @@ class CLIB_Loans {
 		}
 
 		$name = CLIB_Util::text( isset( $raw['borrower_name'] ) ? $raw['borrower_name'] : '', 150 );
+
+		// Optional link to a site account (username or email) so the loan shows on "Library - My Loans".
+		$user_id = null;
+		$account = CLIB_Util::text( isset( $raw['borrower_account'] ) ? $raw['borrower_account'] : '', 100 );
+		if ( '' !== $account ) {
+			$user = is_email( $account ) ? get_user_by( 'email', $account ) : get_user_by( 'login', $account );
+			if ( ! $user ) {
+				return new WP_Error( 'clib_borrower', __( 'No site account matches that username or email.', 'church-library' ) );
+			}
+			$user_id = (int) $user->ID;
+			if ( '' === $name ) {
+				$name = CLIB_Util::cap( sanitize_text_field( $user->display_name ), 150 );
+			}
+		}
 		if ( '' === $name ) {
 			return new WP_Error( 'clib_borrower', __( 'Borrower name is required.', 'church-library' ) );
 		}
@@ -84,11 +106,6 @@ class CLIB_Loans {
 		if ( $out >= (int) $item->copies ) {
 			$wpdb->query( 'ROLLBACK' );
 			return new WP_Error( 'clib_none_left', __( 'All copies of this item are already checked out.', 'church-library' ) );
-		}
-
-		$user_id = CLIB_Util::id_or_null( isset( $raw['borrower_user_id'] ) ? $raw['borrower_user_id'] : 0 );
-		if ( $user_id && ! get_userdata( $user_id ) ) {
-			$user_id = null;
 		}
 
 		$ok = $wpdb->insert(

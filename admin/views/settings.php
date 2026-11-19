@@ -13,7 +13,7 @@ $clib_s      = CLIB_Settings::all();
 $clib_caps   = CLIB_Perms::caps();
 $clib_matrix = CLIB_Perms::matrix();
 $clib_roles  = wp_roles()->get_names();
-$clib_page   = $clib_s['catalog_page_id'] ? get_post( (int) $clib_s['catalog_page_id'] ) : null;
+$clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 ?>
 <h1><?php esc_html_e( 'Library - Settings', 'church-library' ); ?></h1>
 
@@ -35,10 +35,6 @@ $clib_page   = $clib_s['catalog_page_id'] ? get_post( (int) $clib_s['catalog_pag
 			<td>
 				<label><input type="checkbox" name="clib[public_access]" value="1" <?php checked( $clib_s['public_access'], 1 ); ?>> <?php esc_html_e( 'Allow visitors who are not logged in to view the catalog', 'church-library' ); ?></label>
 				<p class="description"><?php esc_html_e( 'When unticked, visitors must log in with a role that has "View catalog" below (Subscriber or higher by default).', 'church-library' ); ?></p>
-				<?php if ( $clib_page && 'trash' !== $clib_page->post_status ) : ?>
-					<p><?php esc_html_e( 'Catalog page:', 'church-library' ); ?> <a href="<?php echo esc_url( get_permalink( $clib_page ) ); ?>" target="_blank" rel="noopener"><?php echo esc_html( get_the_title( $clib_page ) ); ?></a>
-					&middot; <?php esc_html_e( 'Or add the [church_library] shortcode to any page.', 'church-library' ); ?></p>
-				<?php endif; ?>
 			</td>
 		</tr>
 		<tr>
@@ -113,4 +109,37 @@ $clib_page   = $clib_s['catalog_page_id'] ? get_post( (int) $clib_s['catalog_pag
 	</table>
 
 	<?php submit_button( __( 'Save Settings', 'church-library' ) ); ?>
+</form>
+
+<h2><?php esc_html_e( 'Library pages', 'church-library' ); ?></h2>
+<p class="description"><?php esc_html_e( 'Each library task has its own page on your site. Add the ones your team uses to a menu under Appearance. Each page checks permissions on the server before showing anything.', 'church-library' ); ?></p>
+<table class="widefat striped clib-pages-table">
+	<thead><tr>
+		<th><?php esc_html_e( 'Page', 'church-library' ); ?></th>
+		<th><?php esc_html_e( 'Shortcode', 'church-library' ); ?></th>
+		<th><?php esc_html_e( 'Who can open it', 'church-library' ); ?></th>
+		<th><?php esc_html_e( 'Status', 'church-library' ); ?></th>
+	</tr></thead>
+	<tbody>
+	<?php foreach ( CLIB_Pages::PAGES as $clib_k => $clib_def ) : ?>
+		<?php
+		$clib_pid   = isset( $clib_pids[ $clib_k ] ) ? (int) $clib_pids[ $clib_k ] : 0;
+		$clib_ok    = $clib_pid && 'publish' === get_post_status( $clib_pid );
+		$clib_caps2 = CLIB_Perms::caps();
+		$clib_who   = 'view' === $clib_def[4] ? ( $clib_s['public_access'] ? __( 'Everyone', 'church-library' ) : __( 'Logged-in users with View catalog', 'church-library' ) )
+			: ( 'login' === $clib_def[4] ? __( 'Logged-in users with View catalog', 'church-library' ) : ( isset( $clib_caps2[ $clib_def[4] ] ) ? $clib_caps2[ $clib_def[4] ] : $clib_def[4] ) );
+		?>
+		<tr>
+			<td><?php echo $clib_ok ? '<a href="' . esc_url( get_permalink( $clib_pid ) ) . '" target="_blank" rel="noopener">' . esc_html( $clib_def[0] ) . '</a>' : esc_html( $clib_def[0] ); ?></td>
+			<td><code>[<?php echo esc_html( $clib_def[2] ); ?>]</code></td>
+			<td><?php echo esc_html( $clib_who ); ?></td>
+			<td><?php echo $clib_ok ? esc_html__( 'Published', 'church-library' ) : '<strong>' . esc_html__( 'Missing', 'church-library' ) . '</strong>'; ?></td>
+		</tr>
+	<?php endforeach; ?>
+	</tbody>
+</table>
+<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+	<?php wp_nonce_field( 'clib_setup_pages' ); ?>
+	<input type="hidden" name="action" value="clib_setup_pages">
+	<?php submit_button( __( 'Create / repair library pages', 'church-library' ), 'secondary' ); ?>
 </form>

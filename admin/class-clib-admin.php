@@ -41,6 +41,7 @@ class CLIB_Admin {
 			'clib_save_lov',
 			'clib_delete_lov',
 			'clib_save_settings',
+			'clib_setup_pages',
 			'clib_export',
 			'clib_import',
 		);
@@ -110,30 +111,15 @@ class CLIB_Admin {
 	 * ------------------------------------------------------------------ */
 
 	public static function notice( $message, $type = 'success' ) {
-		$key   = 'clib_notice_' . get_current_user_id();
-		$list  = get_transient( $key );
-		$list  = is_array( $list ) ? $list : array();
-		$list[] = array(
-			'type' => in_array( $type, array( 'success', 'error', 'warning', 'info' ), true ) ? $type : 'info',
-			'msg'  => (string) $message,
-		);
-		set_transient( $key, $list, 5 * MINUTE_IN_SECONDS );
+		CLIB_Form::notice( $message, $type );
 	}
 
 	public static function notice_error( WP_Error $err ) {
-		foreach ( $err->get_error_messages() as $m ) {
-			self::notice( $m, 'error' );
-		}
+		CLIB_Form::notice_error( $err );
 	}
 
 	private static function print_notices() {
-		$key  = 'clib_notice_' . get_current_user_id();
-		$list = get_transient( $key );
-		if ( ! is_array( $list ) ) {
-			return;
-		}
-		delete_transient( $key );
-		foreach ( $list as $n ) {
+		foreach ( CLIB_Form::take_notices() as $n ) {
 			printf( '<div class="notice notice-%1$s is-dismissible"><p>%2$s</p></div>', esc_attr( $n['type'] ), esc_html( $n['msg'] ) );
 		}
 	}
@@ -175,35 +161,14 @@ class CLIB_Admin {
 		self::go( 'catalog' === $return ? 'clib-catalog' : 'clib-circulation' );
 	}
 
-	/** <option> list for a LOV. */
+	/** <option> list for a LOV (see CLIB_Form). */
 	public static function lov_options( $type, $selected, $placeholder = '', $active_only = true ) {
-		$html = '';
-		if ( '' !== $placeholder ) {
-			$html .= '<option value="">' . esc_html( $placeholder ) . '</option>';
-		}
-		foreach ( CLIB_LOV::all( $type ) as $id => $row ) {
-			if ( $active_only && ! $row->is_active && (int) $selected !== (int) $id ) {
-				continue;
-			}
-			$attrs = '';
-			if ( 'media_type' === $type ) {
-				$attrs .= ' data-music="' . ( $row->is_music ? '1' : '0' ) . '"';
-			}
-			if ( 'building' === $type ) {
-				$attrs .= ' data-church="' . esc_attr( (int) $row->parent_id ) . '"';
-			}
-			$html .= '<option value="' . esc_attr( $id ) . '"' . $attrs . selected( (int) $selected, (int) $id, false ) . '>' . esc_html( $row->label ) . '</option>';
-		}
-		return $html;
+		return CLIB_Form::lov_options( $type, $selected, $placeholder, $active_only );
 	}
 
-	/** <option> list for a fixed label map. */
+	/** <option> list for a fixed label map (see CLIB_Form). */
 	public static function map_options( array $map, $selected, $placeholder = '' ) {
-		$html = '' !== $placeholder ? '<option value="">' . esc_html( $placeholder ) . '</option>' : '';
-		foreach ( $map as $k => $label ) {
-			$html .= '<option value="' . esc_attr( $k ) . '"' . selected( (string) $selected, (string) $k, false ) . '>' . esc_html( $label ) . '</option>';
-		}
-		return $html;
+		return CLIB_Form::map_options( $map, $selected, $placeholder );
 	}
 
 	/* ---------------------------------------------------------------------
@@ -212,59 +177,19 @@ class CLIB_Admin {
 
 	public static function handle_save_item() {
 		self::guard( 'clib_save_item', 'clib_manage_items' );
-		$id   = CLIB_Util::int( CLIB_Util::post( 'id' ) );
-		$item = $id ? CLIB_Items::get( $id ) : null;
-		if ( $id && ! $item ) {
-			wp_die( esc_html__( 'Item not found.', 'church-library' ), 404 );
-		}
-
-		$data = CLIB_Items::validate( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput -- guard() verified; validate() sanitizes every field.
-		if ( is_wp_error( $data ) ) {
-			self::notice_error( $data );
-			set_transient( 'clib_form_' . get_current_user_id(), CLIB_Items::$last_clean, 5 * MINUTE_IN_SECONDS );
+		$id  = CLIB_Util::int( CLIB_Util::post( 'id' ) );
+		$res = CLIB_Items::save_from_request( $_POST, $id ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput -- guard() verified; every field is sanitized inside.
+		if ( is_wp_error( $res ) ) {
+			self::notice_error( $res );
 			self::go( 'clib-item', $id ? array( 'id' => $id ) : array( 'retry' => 1 ) );
 		}
-
-		// Image: upload > cover from lookup > remove.
-		$image = CLIB_Items::handle_image_upload( 'clib_image' );
-		if ( is_wp_error( $image ) ) {
-			self::notice_error( $image );
-			$image = 0;
+		foreach ( $res['notices'] as $n ) {
+			self::notice( $n[1], $n[0] );
 		}
-		if ( ! $image ) {
-			$provider = sanitize_key( CLIB_Util::post( 'cover_provider' ) );
-			$ref      = CLIB_Util::text( CLIB_Util::post( 'cover_ref' ), 100 );
-			if ( '' !== $provider && '' !== $ref ) {
-				$image = CLIB_Lookup::import_cover( $provider, $ref, $data['title'] );
-				if ( is_wp_error( $image ) ) {
-					self::notice( __( 'The cover image could not be imported; you can upload one instead.', 'church-library' ), 'warning' );
-					$image = 0;
-				}
-			}
+		if ( ! $id && CLIB_Util::post( 'add_another' ) ) {
+			self::go( 'clib-item' );
 		}
-		if ( $image ) {
-			$data['image_id'] = (int) $image;
-		} elseif ( $item && CLIB_Util::post( 'remove_image' ) ) {
-			$data['image_id'] = null;
-		}
-
-		if ( $item ) {
-			CLIB_Items::update( $id, $data );
-			self::notice( __( 'Item updated.', 'church-library' ) );
-		} else {
-			$id = CLIB_Items::create( $data );
-			if ( is_wp_error( $id ) ) {
-				self::notice_error( $id );
-				self::go( 'clib-item' );
-			}
-			$new = CLIB_Items::get( $id );
-			/* translators: %s: item id */
-			self::notice( sprintf( __( 'Item %s added.', 'church-library' ), $new->item_code ) );
-			if ( CLIB_Util::post( 'add_another' ) ) {
-				self::go( 'clib-item' );
-			}
-		}
-		self::go( 'clib-catalog', array( 'view' => $id ) );
+		self::go( 'clib-catalog', array( 'view' => $res['id'] ) );
 	}
 
 	public static function handle_delete_item() {
@@ -417,6 +342,15 @@ class CLIB_Admin {
 		CLIB_Perms::save_matrix( is_array( $matrix ) ? $matrix : array() );
 		CLIB_Audit::log( 'settings', 'settings', 0, 'public_access=' . $settings['public_access'] . ' uninstall_delete=' . $settings['uninstall_delete'] );
 		self::notice( __( 'Settings saved.', 'church-library' ) );
+		self::go( 'clib-settings' );
+	}
+
+	public static function handle_setup_pages() {
+		self::guard( 'clib_setup_pages', 'manage_options' );
+		list( $created, $renamed ) = CLIB_Pages::setup();
+		CLIB_Audit::log( 'pages_setup', 'settings', 0, sprintf( '%d created, %d renamed', $created, $renamed ) );
+		/* translators: 1: created 2: renamed */
+		self::notice( sprintf( __( 'Library pages checked: %1$d created, %2$d renamed. Existing page content was not changed.', 'church-library' ), $created, $renamed ) );
 		self::go( 'clib-settings' );
 	}
 
