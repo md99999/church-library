@@ -150,7 +150,7 @@ class CLIB_Bulk {
 		$t   = CLIB_DB::table( 'items' );
 		$out = array();
 		foreach ( array_chunk( $ids, 500 ) as $chunk ) {
-			$sql = "SELECT id FROM $t WHERE id IN (" . CLIB_Util::in_placeholders( $chunk ) . ')';
+			$sql = "SELECT id FROM $t WHERE is_archived = 0 AND id IN (" . CLIB_Util::in_placeholders( $chunk ) . ')';
 			$out = array_merge( $out, array_map( 'intval', $wpdb->get_col( $wpdb->prepare( $sql, $chunk ) ) ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		}
 		sort( $out );

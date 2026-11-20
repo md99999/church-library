@@ -13,14 +13,18 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 ## Features
 
 - **Catalog** with title, description, notes, creator/author, publisher, media type, music sub-category and difficulty (music only), condition, liturgical use, classification, owned by, ISBN/identifier, barcode, call #, church, building, room, location ID, number of copies, storage status, inventory notes, cost, acquired date and an image.
-- **Item IDs** are generated automatically from the media type prefix and a sequence number, e.g. `BOOK-000123`, `MUSIC-000007`. The prefix is set per media type under *Library - List of Values*.
+- **Item IDs** are generated automatically from the media type prefix and a sequence number, e.g. `BOOK-000123`, `MUSIC-000007`. The prefix is set per media type under *Library - List of Values*. When an item's media type changes (for example Books to DVD), it gets a new ID with the new prefix when saved; the old and new IDs are recorded in the audit log.
+- **Data Tools** (*Library - Data Tools*):
+  - *Item ID check* lists items whose ID prefix does not match their media type (items moved before 1.3.0, or a media type whose prefix was changed) and regenerates the ticked ones after you review the list and confirm. Up to 500 per run, all-or-nothing.
+  - *Duplicate titles* lists catalog items with the same title **in the same media type** (ignoring capitals, accents, punctuation and a leading The/A/An; optionally close spellings too). Pick the record to keep and merge the others into it: its quantity becomes the total copies of all merged records, empty fields are filled from the others, loan history moves to it, the merged IDs and barcodes are noted in its inventory notes, and the other records are deleted. Runs in one database transaction; any failure changes nothing.
+- **Archive and delete** on the item view and edit pages. *Archive* marks an item inactive and hides it from the catalog, reports, lookups, duplicates and check out, keeping its record and history; restore it from *Catalog > Archived items*. *Delete* permanently removes the item and its loan history after a confirmation box that the server checks. An item with copies checked out cannot be archived or deleted.
 - **Locations**: church → building → room (each chosen from the List of Values and linked to its parent) → location ID. The location ID is free-form, so you can use an aisle-bay-shelf scheme such as `A-12-3`.
 - **Check out / check in** desk with borrower name and contact, due dates, multiple copies per item, overdue highlighting, return condition and full loan history. Status changes between *Checked In* and *Checked Out* automatically; *Not Available* is set by staff.
 - **Reports**: collection summary (by media type, church, building, status, condition, totals), currently checked out, overdue, circulation history by date range, and an inventory/shelf list sorted by location. Every report can be downloaded as CSV or printed.
 - **List of Values** managed by admins: every dropdown (media types, music sub-categories, churches, buildings linked to a church, rooms linked to a building, classifications, liturgical uses, conditions and music difficulty levels) can be added to, renamed, reordered, hidden or deleted when unused. Starting values are seeded on activation.
 - **CSV import** for existing spreadsheets (save the sheet as *CSV UTF-8*). Headings such as `Barcode`, `Call #`, `Title`, `Author's Name`, `Classification` and `Cost` are recognised automatically, with preview mode and duplicate skipping.
 - **Full-width library pages** (Library - Settings > Page layout, on by default): the "Library - ..." pages use the theme's full-width / no-sidebar page template when it has one, and otherwise hide sidebar widget areas and widen the content. A template picked by hand in the page editor is never changed.
-- **Title / ISBN lookup** on the item form. It shows matches already in your catalog and results from the online sources ticked in Library - Settings, and fills in title, author, publisher, ISBN, description and cover image. Built-in sources: Open Library (books), MusicBrainz + Cover Art Archive (CDs and recordings, with album art), Hymnary.org (hymn texts, authors, meter), IMSLP (public-domain scores, composer) and Discogs (music releases; needs a free personal access token or an app's consumer key and secret). Each can be switched on or off; only https requests go out, only staff can run them, and cover images come only from each source's allow-listed image host and are re-encoded before saving. Lookup sources are pluggable (see *Extending the lookup*).
+- **Title / ISBN lookup** on the item form. It shows matches already in your catalog and results from the online sources ticked in Library - Settings, and fills in title, author, publisher, ISBN, description and cover image. Built-in sources: Open Library (books), Google Books (books; optional API key), TMDB (movies on DVD/Blu-ray/VHS; needs a free API Read Access Token or v3 key), MusicBrainz + Cover Art Archive (CDs and recordings, with album art), Hymnary.org (hymn texts, authors, meter), IMSLP (public-domain scores, composer) and Discogs (music releases; needs a free personal access token or an app's consumer key and secret). Sources that suit the item's media type run first, in order (books for Books, TMDB for DVD/VHS, music sources for music); the others run only when those find nothing. Results are collated and ranked by how closely the title, and the author when one is typed, match. Author matching ignores word order, so "Tolkien, J.R.R." matches "J. R. R. Tolkien". If a source is over its quota or rejects its key, the lookup says so. IMDb is not included: it has no free official API. Each can be switched on or off; only https requests go out, only staff can run them, and cover images come only from each source's allow-listed image host and are re-encoded before saving. Lookup sources are pluggable (see *Extending the lookup*).
 - **Public catalog** page (`Library - Catalog`, shortcode `[church_library]`) with search and filters. It can be restricted to logged-in users.
 - **Role permission matrix** in *Library - Settings*. Administrators always have full rights.
 - **Audit log** of every change, check out, check in, import and export.
@@ -87,6 +91,7 @@ Under the **Library** menu in the dashboard:
 | Library - Reports | View reports |
 | Library - List of Values | Manage lists of values |
 | Library - Import | Import CSV |
+| Library - Data Tools | Delete items (merging and fixing IDs also need Add & edit items) |
 | Library - Settings | Administrator only |
 | Library - Audit Log | Administrator only |
 
@@ -120,6 +125,8 @@ The plugin was built to be safe on a public church website:
 - **Uploads**: images must be JPG, PNG, GIF or WebP, are checked by extension, real MIME type (`wp_check_filetype_and_ext`) and image header (`getimagesize`), are limited to 5 MB, and are then **re-encoded** through the WordPress image editor. Re-encoding strips EXIF/GPS data and anything appended to the file. Files are stored by `wp_handle_upload()`, which sanitises names and prevents path traversal, in `uploads/church-library/`. That folder gets an `index.php` and an `.htaccess` that disables script execution.
 - **CSV import** accepts only `.csv` text files up to 5 MB / 5,000 rows, rejects binary or zipped content, and reads the temporary file in place without moving it anywhere web-accessible.
 - **CSV export** neutralises spreadsheet formula injection (`=`, `+`, `-`, `@`).
+- **API keys** (Google Books, TMDB, Discogs) are validated against each service's key format, never shown again on the settings page, and sent only over https to the fixed address of their own service, in a request header where the service allows it (Google Books `X-goog-api-key`, TMDB `Authorization: Bearer`). Remote data is re-validated field by field: ids and poster names must match strict patterns, cover URLs are rebuilt server-side on allow-listed hosts, and text is sanitised before it reaches the browser.
+- **Destructive actions** (delete, archive, merge, Item ID fixes) each need an action-bound nonce, the matching capability, and, for delete, merge and fixes, a confirmation box checked on the server. Merges, ID fixes and deletes run inside database transactions with row locks and roll back on any failure.
 - **Outbound requests**: the lookup can be turned off in settings. It uses `wp_safe_remote_get()` with short timeouts and a size limit, is limited to 30 lookups per user per 5 minutes, and caches results. Cover images are never downloaded from a URL sent by the browser: the server rebuilds the URL from a numeric cover ID and checks the host against the provider's allow list.
 - **Race conditions**: Item IDs are allocated atomically (`LAST_INSERT_ID(expr)`), and check-outs lock the item row so two desks cannot lend the last copy at the same time.
 - **Direct access**: every PHP file exits unless loaded by WordPress, every folder has a "silence is golden" `index.php`, and `.htaccess` files deny direct requests to PHP and other non-asset files on Apache.
@@ -160,6 +167,13 @@ assets/                   CSS and JavaScript
 ```
 
 ## Changelog
+
+### 1.3.0
+- Changing an item's media type gives it a new Item ID with the new prefix.
+- Library - Data Tools: Item ID check (find and fix IDs that do not match their media type) and Duplicate titles (find possible duplicates within the same media type and merge them, adding up the copies).
+- Archive (hide, restorable) and permanent Delete on the item edit page; archived items have their own catalog filter.
+- Title lookup: Google Books and TMDB sources; sources matched to the media type run first; results ranked by title and author closeness; quota and key problems are reported.
+- Database version 6 (adds `is_archived` and `archived_at` to items; applied automatically on update).
 
 ### 1.2.2
 - Page links (1 2 3 Next) shown above the list as well as below, on the front-end catalog, the admin catalog and the audit log.

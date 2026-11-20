@@ -87,6 +87,8 @@ class CLIB_DB {
   image_id bigint(20) unsigned NULL,
   cost decimal(10,2) NULL,
   acquired_date date NULL,
+  is_archived tinyint(1) NOT NULL DEFAULT 0,
+  archived_at datetime NULL,
   created_at datetime NOT NULL,
   updated_at datetime NOT NULL,
   created_by bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -98,6 +100,7 @@ class CLIB_DB {
   KEY church_id (church_id),
   KEY building_id (building_id),
   KEY storage_status (storage_status),
+  KEY is_archived (is_archived),
   KEY barcode (barcode),
   KEY identifier (identifier)
 ) $charset;";

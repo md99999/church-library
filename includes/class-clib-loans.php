@@ -70,6 +70,9 @@ class CLIB_Loans {
 		if ( ! $item ) {
 			return new WP_Error( 'clib_missing', __( 'Item not found.', 'church-library' ) );
 		}
+		if ( ! empty( $item->is_archived ) ) {
+			return new WP_Error( 'clib_archived', __( 'This item is archived. Restore it before checking it out.', 'church-library' ) );
+		}
 		if ( 'not_available' === $item->storage_status ) {
 			return new WP_Error( 'clib_unavailable', __( 'This item is marked Not Available.', 'church-library' ) );
 		}

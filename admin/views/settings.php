@@ -73,6 +73,8 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 					<?php
 					$clib_pdesc = array(
 						'openlibrary' => __( 'Open Library: books, by title or ISBN. Free, no key.', 'church-library' ),
+					'googlebooks' => __( 'Google Books: books, by title or ISBN, with covers. Free; works without a key at low volume, or add an optional API key below for a higher quota.', 'church-library' ),
+					'tmdb'        => __( 'TMDB (The Movie Database): movies on DVD, Blu-ray or VHS, by title, with posters and director. Needs a free TMDB account and API Read Access Token (or v3 API key), entered below. This product uses the TMDB API but is not endorsed or certified by TMDB.', 'church-library' ),
 						'musicbrainz' => __( 'MusicBrainz + Cover Art Archive: CDs, albums and recordings, by title or CD barcode, with album art. Free, no key; limited to one request per second.', 'church-library' ),
 						'hymnary'     => __( 'Hymnary.org: hymn texts by title or first line, with authors and meter. Free, no key; no cover images.', 'church-library' ),
 						'imslp'       => __( 'IMSLP (Petrucci Music Library): public-domain scores, by work title, with composer. Free, no key; no cover images.', 'church-library' ),
@@ -80,6 +82,13 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 					);
 					// Fixed, https-only links shown after a source's description.
 					$clib_plinks = array(
+					'googlebooks' => array(
+						'https://developers.google.com/books/docs/v1/using#APIKey' => __( 'How to get a Google Books API key', 'church-library' ),
+					),
+					'tmdb'        => array(
+						'https://www.themoviedb.org/settings/api' => __( 'Get your TMDB API Read Access Token', 'church-library' ),
+						'https://www.themoviedb.org/api-terms-of-use' => __( 'TMDB API terms of use', 'church-library' ),
+					),
 						'discogs' => array(
 							'https://www.discogs.com/settings/developers' => __( 'Get your Discogs personal access token', 'church-library' ),
 							'https://www.discogs.com/developers' => __( 'Discogs API documentation and terms', 'church-library' ),
@@ -109,6 +118,20 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 					<?php if ( $clib_s['discogs_key'] || $clib_s['discogs_secret'] ) : ?>
 						<br><label><input type="checkbox" name="clib[discogs_app_clear]" value="1"> <?php esc_html_e( 'Remove saved key and secret', 'church-library' ); ?></label>
 					<?php endif; ?>
+					<p class="description"><?php esc_html_e( 'API keys are stored in the WordPress options table, sent only over https to the fixed address of their own service, and never shown on this page again. Leave a field blank to keep the saved value.', 'church-library' ); ?></p>
+					<label><?php esc_html_e( 'Google Books API key (optional)', 'church-library' ); ?>
+						<input type="password" name="clib[google_books_key]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['google_books_key'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
+					<?php if ( $clib_s['google_books_key'] ) : ?>
+						<label><input type="checkbox" name="clib[google_books_key_clear]" value="1"> <?php esc_html_e( 'Remove saved key', 'church-library' ); ?></label>
+					<?php endif; ?>
+					<br><label><?php esc_html_e( 'TMDB API Read Access Token', 'church-library' ); ?>
+						<input type="password" name="clib[tmdb_token]" value="" maxlength="1024" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['tmdb_token'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label><br>
+					<label><?php esc_html_e( 'or TMDB API key (v3)', 'church-library' ); ?>
+						<input type="password" name="clib[tmdb_key]" value="" maxlength="32" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['tmdb_key'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
+					<?php if ( $clib_s['tmdb_token'] || $clib_s['tmdb_key'] ) : ?>
+						<br><label><input type="checkbox" name="clib[tmdb_clear]" value="1"> <?php esc_html_e( 'Remove saved TMDB credentials', 'church-library' ); ?></label>
+					<?php endif; ?>
+					<p class="description"><?php esc_html_e( 'IMDb is not offered: it has no free official API, and reading its web pages automatically is against its terms.', 'church-library' ); ?></p>
 				</fieldset>
 			</td>
 		</tr>

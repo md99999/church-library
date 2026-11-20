@@ -24,6 +24,9 @@ class CLIB_Items {
 	/** Sanitized values from the last validate() call (used to refill the form after an error). */
 	public static $last_clean = array();
 
+	/** Item id => [ old code, new code ] for IDs regenerated during this request. */
+	public static $recoded = array();
+
 	/** Allowed image types (extension regex => mime). */
 	public static function image_mimes() {
 		return array(
@@ -184,8 +187,16 @@ class CLIB_Items {
 		}
 
 		if ( $item ) {
-			self::update( $id, $data );
+			if ( ! self::update( $id, $data ) ) {
+				return new WP_Error( 'clib_db', __( 'Could not save the item.', 'church-library' ) );
+			}
 			$notices[] = array( 'success', __( 'Item updated.', 'church-library' ) );
+			if ( isset( self::$recoded[ $id ] ) ) {
+				/* translators: 1: old item id 2: new item id */
+				$notices[] = array( 'warning', sprintf( __( 'The media type changed, so the Item ID changed from %1$s to %2$s. Reprint the label if it shows the old ID.', 'church-library' ), self::$recoded[ $id ][0], self::$recoded[ $id ][1] ) );
+			} elseif ( (int) $item->media_type_id !== (int) $data['media_type_id'] && ! self::code_matches( self::get( $id )->item_code, $data['media_type_id'] ) ) {
+				$notices[] = array( 'error', __( 'The media type changed but a new Item ID could not be assigned. Use Library - Data Tools > Item ID check to fix it.', 'church-library' ) );
+			}
 			return array( 'id' => $id, 'notices' => $notices );
 		}
 		$new_id = self::create( $data );
@@ -197,14 +208,27 @@ class CLIB_Items {
 		return array( 'id' => $new_id, 'notices' => $notices );
 	}
 
+	/** Item ID prefix for a media type: its List of Values code, or ITEM when it has none. */
+	public static function prefix_for( $media_type_id ) {
+		$mt     = $media_type_id ? CLIB_LOV::get( (int) $media_type_id ) : null;
+		$prefix = ( $mt && 'media_type' === $mt->list_type ) ? CLIB_Util::code( $mt->code, 10 ) : '';
+		return '' === $prefix ? 'ITEM' : $prefix;
+	}
+
+	/** Prefix part of an item code ("DVD-000012" -> "DVD"), or '' when the code is not in PREFIX-NUMBER form. */
+	public static function code_prefix( $code ) {
+		return preg_match( '/^([A-Z0-9]{1,10})-[0-9]{1,12}$/', (string) $code, $m ) ? $m[1] : '';
+	}
+
+	/** Does an item code carry the prefix of this media type? */
+	public static function code_matches( $code, $media_type_id ) {
+		return self::code_prefix( $code ) === self::prefix_for( $media_type_id );
+	}
+
 	/** Generate the next item code for a media type, e.g. BOOK-000123. */
 	public static function next_code( $media_type_id ) {
 		global $wpdb;
-		$mt     = CLIB_LOV::get( $media_type_id );
-		$prefix = $mt ? CLIB_Util::code( $mt->code, 10 ) : '';
-		if ( '' === $prefix ) {
-			$prefix = 'ITEM';
-		}
+		$prefix = self::prefix_for( $media_type_id );
 		$seq = CLIB_DB::table( 'sequences' );
 		// Atomic increment: LAST_INSERT_ID(expr) is connection-scoped, so two
 		// simultaneous saves can never receive the same number.
@@ -242,6 +266,8 @@ class CLIB_Items {
 			'image_id'          => '%d',
 			'cost'              => '%s',
 			'acquired_date'     => '%s',
+			'is_archived'       => '%d',
+			'archived_at'       => '%s',
 			'created_at'        => '%s',
 			'updated_at'        => '%s',
 			'created_by'        => '%d',
@@ -280,18 +306,117 @@ class CLIB_Items {
 		return new WP_Error( 'clib_db', __( 'Could not save the item.', 'church-library' ) );
 	}
 
+	/**
+	 * Update an item. When the media type changes to one with a different
+	 * prefix, the item gets a new Item ID from that prefix's sequence.
+	 */
 	public static function update( $id, array $d ) {
 		global $wpdb;
+		$old = self::get( $id );
+		if ( ! $old ) {
+			return false;
+		}
 		$d['updated_at'] = CLIB_Util::now();
 		$d['updated_by'] = get_current_user_id();
-		unset( $d['item_code'], $d['created_at'], $d['created_by'] ); // Immutable.
+		// item_code changes only through recode(); archive state only through archive() / restore().
+		unset( $d['item_code'], $d['created_at'], $d['created_by'], $d['is_archived'], $d['archived_at'] );
 		$d  = array_intersect_key( $d, self::formats() );
 		$ok = false !== $wpdb->update( CLIB_DB::table( 'items' ), $d, array( 'id' => (int) $id ), self::fmt_for( $d ), array( '%d' ) );
 		if ( $ok ) {
 			self::refresh_status( $id );
 			CLIB_Audit::log( 'item_update', 'item', $id, isset( $d['title'] ) ? $d['title'] : '' );
+			if ( isset( $d['media_type_id'] ) && (int) $d['media_type_id'] !== (int) $old->media_type_id ) {
+				self::recode( $id ); // Errors are reported by the caller (code still mismatched).
+			}
 		}
 		return $ok;
+	}
+
+	/**
+	 * Give an item a new Item ID that matches its media type, if it does not
+	 * already. The UPDATE only succeeds while the row still has the old code
+	 * (optimistic lock), and a clash with an existing code is retried with the
+	 * next number.
+	 *
+	 * @return string|WP_Error The item's (new or unchanged) code.
+	 */
+	public static function recode( $id ) {
+		global $wpdb;
+		$t    = CLIB_DB::table( 'items' );
+		$item = self::get( $id );
+		if ( ! $item ) {
+			return new WP_Error( 'clib_missing', __( 'Item not found.', 'church-library' ) );
+		}
+		if ( self::code_matches( $item->item_code, $item->media_type_id ) ) {
+			return $item->item_code;
+		}
+		$old = $item->item_code;
+		for ( $try = 0; $try < 3; $try++ ) {
+			$code = self::next_code( $item->media_type_id );
+			if ( $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $t WHERE item_code = %s", $code ) ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				continue; // Number already used (e.g. sequence reset); take the next one.
+			}
+			$rows = $wpdb->query( $wpdb->prepare( "UPDATE $t SET item_code = %s, updated_at = %s, updated_by = %d WHERE id = %d AND item_code = %s", $code, CLIB_Util::now(), get_current_user_id(), (int) $id, $old ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			if ( 1 === $rows ) {
+				self::$recoded[ (int) $id ] = array( $old, $code );
+				CLIB_Audit::log( 'item_recode', 'item', $id, $old . ' -> ' . $code );
+				return $code;
+			}
+			if ( 0 === $rows ) {
+				return new WP_Error( 'clib_changed', __( 'The item was changed by someone else. Reload and try again.', 'church-library' ) );
+			}
+			// false: most likely the code already exists (unique key); try the next number.
+		}
+		return new WP_Error( 'clib_db', __( 'A new Item ID could not be assigned.', 'church-library' ) );
+	}
+
+	/** Archive: hidden from the catalog, reports, lookups and circulation; can be restored. */
+	public static function archive( $id ) {
+		global $wpdb;
+		$item = self::get( $id );
+		if ( ! $item ) {
+			return new WP_Error( 'clib_missing', __( 'Item not found.', 'church-library' ) );
+		}
+		if ( (int) $item->is_archived ) {
+			return true;
+		}
+		if ( CLIB_Loans::active_count( $id ) > 0 ) {
+			return new WP_Error( 'clib_loaned', __( 'Check in every copy before archiving the item.', 'church-library' ) );
+		}
+		$now = CLIB_Util::now();
+		$ok  = $wpdb->update(
+			CLIB_DB::table( 'items' ),
+			array(
+				'is_archived' => 1,
+				'archived_at' => $now,
+				'updated_at'  => $now,
+				'updated_by'  => get_current_user_id(),
+			),
+			array( 'id' => (int) $id ),
+			array( '%d', '%s', '%s', '%d' ),
+			array( '%d' )
+		);
+		if ( false === $ok ) {
+			return new WP_Error( 'clib_db', __( 'The item could not be archived.', 'church-library' ) );
+		}
+		CLIB_Audit::log( 'item_archive', 'item', $id, $item->item_code . ' ' . $item->title );
+		return true;
+	}
+
+	/** Restore an archived item to the catalog. */
+	public static function restore( $id ) {
+		global $wpdb;
+		$item = self::get( $id );
+		if ( ! $item ) {
+			return new WP_Error( 'clib_missing', __( 'Item not found.', 'church-library' ) );
+		}
+		$t  = CLIB_DB::table( 'items' );
+		$ok = $wpdb->query( $wpdb->prepare( "UPDATE $t SET is_archived = 0, archived_at = NULL, updated_at = %s, updated_by = %d WHERE id = %d", CLIB_Util::now(), get_current_user_id(), (int) $id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( false === $ok ) {
+			return new WP_Error( 'clib_db', __( 'The item could not be restored.', 'church-library' ) );
+		}
+		CLIB_Audit::log( 'item_restore', 'item', $id, $item->item_code . ' ' . $item->title );
+		return true;
 	}
 
 	public static function get( $id ) {
@@ -300,7 +425,7 @@ class CLIB_Items {
 		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE id = %d", $id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
-	/** Find by item code or barcode (for circulation desk). */
+	/** Find by item code or barcode (circulation desk, public item page). Archived items are not found. */
 	public static function find_by_code( $code ) {
 		global $wpdb;
 		$code = CLIB_Util::text( $code, 64 );
@@ -308,9 +433,9 @@ class CLIB_Items {
 			return null;
 		}
 		$t   = CLIB_DB::table( 'items' );
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE item_code = %s LIMIT 1", $code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE item_code = %s AND is_archived = 0 LIMIT 1", $code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		if ( ! $row ) {
-			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE barcode = %s LIMIT 1", $code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $t WHERE barcode = %s AND is_archived = 0 LIMIT 1", $code ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
 		return $row;
 	}
@@ -324,9 +449,16 @@ class CLIB_Items {
 		if ( CLIB_Loans::active_count( $id ) > 0 ) {
 			return new WP_Error( 'clib_loaned', __( 'Check the item in before deleting it.', 'church-library' ) );
 		}
-		$wpdb->delete( CLIB_DB::table( 'loans' ), array( 'item_id' => (int) $id ), array( '%d' ) );
-		$wpdb->delete( CLIB_DB::table( 'items' ), array( 'id' => (int) $id ), array( '%d' ) );
-		CLIB_Audit::log( 'item_delete', 'item', $id, $item->item_code . ' ' . $item->title );
+		// Loan history and the item go together or not at all.
+		$wpdb->query( 'START TRANSACTION' );
+		$loans = $wpdb->delete( CLIB_DB::table( 'loans' ), array( 'item_id' => (int) $id ), array( '%d' ) );
+		$items = false === $loans ? false : $wpdb->delete( CLIB_DB::table( 'items' ), array( 'id' => (int) $id ), array( '%d' ) );
+		if ( false === $loans || 1 !== $items ) {
+			$wpdb->query( 'ROLLBACK' );
+			return new WP_Error( 'clib_db', __( 'The item could not be deleted; nothing was changed.', 'church-library' ) );
+		}
+		$wpdb->query( 'COMMIT' );
+		CLIB_Audit::log( 'item_delete', 'item', $id, $item->item_code . ' ' . $item->title . ( $loans ? sprintf( ' (%d loan records)', (int) $loans ) : '' ) );
 		return true;
 	}
 
@@ -361,6 +493,7 @@ class CLIB_Items {
 				'building_id'       => 0,
 				'classification_id' => 0,
 				'status'            => '',
+				'archived'          => 0, // 0 = catalog (default), 1 = archived items only.
 				'orderby'           => 'title',
 				'order'             => 'asc',
 				'page'              => 1,
@@ -370,7 +503,7 @@ class CLIB_Items {
 
 		$items = CLIB_DB::table( 'items' );
 		$lov   = CLIB_DB::table( 'lov' );
-		$where = array( '1=1' );
+		$where = array( empty( $args['archived'] ) ? 'i.is_archived = 0' : 'i.is_archived = 1' );
 		$vals  = array();
 
 		if ( '' !== $args['q'] ) {

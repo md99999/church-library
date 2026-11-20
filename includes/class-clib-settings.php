@@ -22,7 +22,10 @@ class CLIB_Settings {
 			'loan_days'        => 21,
 			'per_page'         => 25,
 			'lookup_enabled'   => 1,  // Title / ISBN lookup master switch.
-			'lookup_providers' => array( 'openlibrary', 'musicbrainz', 'hymnary', 'imslp' ),
+			'lookup_providers' => array( 'openlibrary', 'googlebooks', 'musicbrainz', 'hymnary', 'imslp' ),
+			'google_books_key' => '', // Optional; raises the Google Books quota.
+			'tmdb_token'       => '', // TMDB API Read Access Token (preferred).
+			'tmdb_key'         => '', // Or a TMDB v3 API key.
 			'discogs_token'    => '',
 			'discogs_key'      => '',
 			'discogs_secret'   => '',
@@ -58,6 +61,43 @@ class CLIB_Settings {
 	/** Discogs consumer key / secret: letters and digits only, sane length. */
 	public static function valid_discogs_credential( $v ) {
 		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9]{10,64}$/', $v );
+	}
+
+	/** Google API key: "AIza" style keys are 39 characters of letters, digits, - and _. */
+	public static function valid_google_key( $v ) {
+		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9_-]{30,64}$/', $v );
+	}
+
+	/** TMDB API Read Access Token (a signed JWT: base64url segments separated by dots). */
+	public static function valid_tmdb_token( $v ) {
+		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}$/', $v ) && strlen( $v ) <= 1024;
+	}
+
+	/** TMDB v3 API key: 32 hexadecimal characters. */
+	public static function valid_tmdb_key( $v ) {
+		return is_string( $v ) && 1 === preg_match( '/^[A-Fa-f0-9]{32}$/', $v );
+	}
+
+	/**
+	 * Secret field rules shared by every API credential: blank keeps the saved
+	 * value, the "clear" box removes it, anything else must pass $valid or it is
+	 * rejected (and reported) while the old value is kept. Secrets are never
+	 * echoed back to the settings page.
+	 */
+	private static function secret( array $raw, array &$out, $field, $clear, $valid, $label ) {
+		if ( ! empty( $raw[ $clear ] ) ) {
+			$out[ $field ] = '';
+			return;
+		}
+		$v = isset( $raw[ $field ] ) && is_string( $raw[ $field ] ) ? trim( wp_unslash( $raw[ $field ] ) ) : '';
+		if ( '' === $v ) {
+			return;
+		}
+		if ( call_user_func( $valid, $v ) ) {
+			$out[ $field ] = $v;
+		} else {
+			self::$rejected[] = $label;
+		}
 	}
 
 	/** Sanitize a raw settings array (from POST). Unknown keys are dropped. */
@@ -110,6 +150,10 @@ class CLIB_Settings {
 				}
 			}
 		}
+
+		self::secret( $raw, $out, 'google_books_key', 'google_books_key_clear', array( __CLASS__, 'valid_google_key' ), __( 'Google Books API key', 'church-library' ) );
+		self::secret( $raw, $out, 'tmdb_token', 'tmdb_clear', array( __CLASS__, 'valid_tmdb_token' ), __( 'TMDB API Read Access Token', 'church-library' ) );
+		self::secret( $raw, $out, 'tmdb_key', 'tmdb_clear', array( __CLASS__, 'valid_tmdb_key' ), __( 'TMDB API key', 'church-library' ) );
 		return $out;
 	}
 

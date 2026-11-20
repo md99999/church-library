@@ -92,3 +92,5 @@
 .clib .clib-submit-top, .clib-item-form .clib-submit-top { margin-top: 0; margin-bottom: 16px; }
 
 .clib .clib-pages-top { margin: 0 0 12px; }
+.clib-score { display: inline-block; font-size: 11px; opacity: .8; border: 1px solid currentColor; border-radius: 8px; padding: 0 6px; margin-top: 2px; }
+.clib-lookup-problem { color: #8a2424; margin: 2px 0; font-size: 12px; }
