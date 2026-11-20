@@ -193,6 +193,58 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 	<?php submit_button( __( 'Save Settings', 'church-library' ) ); ?>
 </form>
 
+<h2 id="clib-prefixes"><?php esc_html_e( 'Item ID prefixes', 'church-library' ); ?></h2>
+<p class="description"><?php esc_html_e( 'Each media type\'s code in List of Values is the prefix of its Item IDs (for example BOOK-000123). Validate checks that every media type has its own valid prefix and that every item\'s ID matches its media type. It only reads; nothing is changed.', 'church-library' ); ?></p>
+<?php
+$clib_pc = get_transient( 'clib_prefix_check_' . get_current_user_id() );
+if ( is_array( $clib_pc ) && isset( $clib_pc['types'] ) ) :
+	delete_transient( 'clib_prefix_check_' . get_current_user_id() );
+	?>
+	<table class="widefat striped clib-prefix-table">
+		<thead><tr>
+			<th><?php esc_html_e( 'Media Type', 'church-library' ); ?></th>
+			<th><?php esc_html_e( 'Prefix', 'church-library' ); ?></th>
+			<th><?php esc_html_e( 'Items', 'church-library' ); ?></th>
+			<th><?php esc_html_e( 'Result', 'church-library' ); ?></th>
+		</tr></thead>
+		<tbody>
+		<?php foreach ( $clib_pc['types'] as $clib_t ) : ?>
+			<tr>
+				<td><?php echo esc_html( $clib_t['label'] ); ?><?php echo $clib_t['active'] ? '' : ' <em>(' . esc_html__( 'hidden', 'church-library' ) . ')</em>'; ?></td>
+				<td><code><?php echo esc_html( $clib_t['prefix'] ); ?>-</code></td>
+				<td><?php echo esc_html( number_format_i18n( (int) $clib_t['items'] ) ); ?></td>
+				<td>
+					<?php if ( ! $clib_t['issues'] ) : ?>
+						<span class="clib-status"><?php esc_html_e( 'OK', 'church-library' ); ?></span>
+					<?php else : ?>
+						<ul class="clib-prefix-issues">
+							<?php foreach ( $clib_t['issues'] as $clib_issue ) : ?>
+								<li><?php echo esc_html( $clib_issue ); ?></li>
+							<?php endforeach; ?>
+						</ul>
+					<?php endif; ?>
+				</td>
+			</tr>
+		<?php endforeach; ?>
+		</tbody>
+	</table>
+	<p>
+		<?php if ( $clib_pc['mismatched'] ) : ?>
+			<?php
+			/* translators: %d: number of items */
+			echo esc_html( sprintf( _n( '%d item needs a new Item ID.', '%d items need a new Item ID.', $clib_pc['mismatched'], 'church-library' ), $clib_pc['mismatched'] ) );
+			?>
+			<a class="button" href="<?php echo esc_url( CLIB_Admin::url( 'clib-tools', array( 'tab' => 'ids' ) ) ); ?>"><?php esc_html_e( 'Review and fix in Data Tools', 'church-library' ); ?></a>
+		<?php endif; ?>
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=clib-lists&list=media_type' ) ); ?>"><?php esc_html_e( 'Edit media type prefixes', 'church-library' ); ?></a>
+	</p>
+<?php endif; ?>
+<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+	<?php wp_nonce_field( 'clib_validate_prefixes' ); ?>
+	<input type="hidden" name="action" value="clib_validate_prefixes">
+	<?php submit_button( __( 'Validate ID prefixes', 'church-library' ), 'secondary', 'submit', false ); ?>
+</form>
+
 <h2><?php esc_html_e( 'Library pages', 'church-library' ); ?></h2>
 <p class="description"><?php esc_html_e( 'Each library task has its own page on your site. Add the ones your team uses to a menu under Appearance. Each page checks permissions on the server before showing anything.', 'church-library' ); ?></p>
 <table class="widefat striped clib-pages-table">

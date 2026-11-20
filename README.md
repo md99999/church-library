@@ -15,6 +15,7 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 - **Catalog** with title, description, notes, creator/author, publisher, media type, music sub-category and difficulty (music only), condition, liturgical use, classification, owned by, ISBN/identifier, barcode, call #, church, building, room, location ID, number of copies, storage status, inventory notes, cost, acquired date and an image.
 - **Item IDs** are generated automatically from the media type prefix and a sequence number, e.g. `BOOK-000123`, `MUSIC-000007`. The prefix is set per media type under *Library - List of Values*. When an item's media type changes (for example Books to DVD), it gets a new ID with the new prefix when saved; the old and new IDs are recorded in the audit log.
 - **Data Tools** (*Library - Data Tools*):
+  - The **Validate ID prefixes** button in *Library - Settings* checks the prefix setup itself (missing, malformed or shared prefixes) and counts mismatched IDs per media type, without changing anything.
   - *Item ID check* lists items whose ID prefix does not match their media type (items moved before 1.3.0, or a media type whose prefix was changed) and regenerates the ticked ones after you review the list and confirm. Up to 500 per run, all-or-nothing.
   - *Duplicate titles* lists catalog items with the same title **in the same media type** (ignoring capitals, accents, punctuation and a leading The/A/An; optionally close spellings too). Pick the record to keep and merge the others into it: its quantity becomes the total copies of all merged records, empty fields are filled from the others, loan history moves to it, the merged IDs and barcodes are noted in its inventory notes, and the other records are deleted. Runs in one database transaction; any failure changes nothing.
 - **Archive and delete** on the item view and edit pages. *Archive* marks an item inactive and hides it from the catalog, reports, lookups, duplicates and check out, keeping its record and history; restore it from *Catalog > Archived items*. *Delete* permanently removes the item and its loan history after a confirmation box that the server checks. An item with copies checked out cannot be archived or deleted.
@@ -167,6 +168,9 @@ assets/                   CSS and JavaScript
 ```
 
 ## Changelog
+
+### 1.3.1
+- Library - Settings > Item ID prefixes > **Validate ID prefixes**: read-only check that every media type has its own valid prefix (present, letters/digits only, not shared with another media type) and that every Item ID matches its media type, with counts per media type and a link to Data Tools to fix mismatches.
 
 ### 1.3.0
 - Changing an item's media type gives it a new Item ID with the new prefix.
