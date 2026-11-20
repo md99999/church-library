@@ -76,7 +76,7 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 						'musicbrainz' => __( 'MusicBrainz + Cover Art Archive: CDs, albums and recordings, by title or CD barcode, with album art. Free, no key; limited to one request per second.', 'church-library' ),
 						'hymnary'     => __( 'Hymnary.org: hymn texts by title or first line, with authors and meter. Free, no key; no cover images.', 'church-library' ),
 						'imslp'       => __( 'IMSLP (Petrucci Music Library): public-domain scores, by work title, with composer. Free, no key; no cover images.', 'church-library' ),
-						'discogs'     => __( 'Discogs: CDs, records and other music releases, by title or barcode, with cover images. Needs a free Discogs account and a personal access token. Review the Discogs API terms before turning this on.', 'church-library' ),
+						'discogs'     => __( 'Discogs: CDs, records and other music releases, by title or barcode, with cover images. Needs a free Discogs account and either a personal access token or the consumer key and secret of a Discogs app. Review the Discogs API terms before turning this on.', 'church-library' ),
 					);
 					// Fixed, https-only links shown after a source's description.
 					$clib_plinks = array(
@@ -100,6 +100,14 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 						<input type="password" name="clib[discogs_token]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_token'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
 					<?php if ( $clib_s['discogs_token'] ) : ?>
 						<label><input type="checkbox" name="clib[discogs_token_clear]" value="1"> <?php esc_html_e( 'Remove saved token', 'church-library' ); ?></label>
+					<?php endif; ?>
+					<p class="description"><?php esc_html_e( 'Or, instead of a token, the consumer key and consumer secret of a Discogs app you registered (on the same Discogs developers page linked above). The API address is built in and cannot be changed.', 'church-library' ); ?></p>
+					<label><?php esc_html_e( 'Discogs consumer key', 'church-library' ); ?>
+						<input type="password" name="clib[discogs_key]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_key'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label><br>
+					<label><?php esc_html_e( 'Discogs consumer secret', 'church-library' ); ?>
+						<input type="password" name="clib[discogs_secret]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_secret'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
+					<?php if ( $clib_s['discogs_key'] || $clib_s['discogs_secret'] ) : ?>
+						<br><label><input type="checkbox" name="clib[discogs_app_clear]" value="1"> <?php esc_html_e( 'Remove saved key and secret', 'church-library' ); ?></label>
 					<?php endif; ?>
 				</fieldset>
 			</td>

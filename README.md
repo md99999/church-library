@@ -20,7 +20,7 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 - **List of Values** managed by admins: every dropdown (media types, music sub-categories, churches, buildings linked to a church, rooms linked to a building, classifications, liturgical uses, conditions and music difficulty levels) can be added to, renamed, reordered, hidden or deleted when unused. Starting values are seeded on activation.
 - **CSV import** for existing spreadsheets (save the sheet as *CSV UTF-8*). Headings such as `Barcode`, `Call #`, `Title`, `Author's Name`, `Classification` and `Cost` are recognised automatically, with preview mode and duplicate skipping.
 - **Full-width library pages** (Library - Settings > Page layout, on by default): the "Library - ..." pages use the theme's full-width / no-sidebar page template when it has one, and otherwise hide sidebar widget areas and widen the content. A template picked by hand in the page editor is never changed.
-- **Title / ISBN lookup** on the item form. It shows matches already in your catalog and results from the online sources ticked in Library - Settings, and fills in title, author, publisher, ISBN, description and cover image. Built-in sources: Open Library (books), MusicBrainz + Cover Art Archive (CDs and recordings, with album art), Hymnary.org (hymn texts, authors, meter), IMSLP (public-domain scores, composer) and Discogs (music releases; needs a free personal access token). Each can be switched on or off; only https requests go out, only staff can run them, and cover images come only from each source's allow-listed image host and are re-encoded before saving. Lookup sources are pluggable (see *Extending the lookup*).
+- **Title / ISBN lookup** on the item form. It shows matches already in your catalog and results from the online sources ticked in Library - Settings, and fills in title, author, publisher, ISBN, description and cover image. Built-in sources: Open Library (books), MusicBrainz + Cover Art Archive (CDs and recordings, with album art), Hymnary.org (hymn texts, authors, meter), IMSLP (public-domain scores, composer) and Discogs (music releases; needs a free personal access token or an app's consumer key and secret). Each can be switched on or off; only https requests go out, only staff can run them, and cover images come only from each source's allow-listed image host and are re-encoded before saving. Lookup sources are pluggable (see *Extending the lookup*).
 - **Public catalog** page (`Library - Catalog`, shortcode `[church_library]`) with search and filters. It can be restricted to logged-in users.
 - **Role permission matrix** in *Library - Settings*. Administrators always have full rights.
 - **Audit log** of every change, check out, check in, import and export.
@@ -160,6 +160,10 @@ assets/                   CSS and JavaScript
 ```
 
 ## Changelog
+
+### 1.2.1
+- Discogs can use a registered app's consumer key and secret instead of a personal access token (validated; never shown back on the settings page).
+- Settings shows an error when a Discogs credential is rejected, instead of silently keeping the old value.
 
 ### 1.2.0
 - Library pages show full width without the theme sidebar by default (Library - Settings > Page layout).

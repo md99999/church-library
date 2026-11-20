@@ -155,17 +155,35 @@ class CLIB_Lookup_Discogs implements CLIB_Lookup_Provider {
 		return preg_match( '/^[A-Za-z0-9]{20,64}$/', $t ) ? $t : '';
 	}
 
+	/** Consumer key + secret of a registered Discogs app (alternative to a token). */
+	private function key_secret() {
+		$k = (string) CLIB_Settings::get( 'discogs_key' );
+		$s = (string) CLIB_Settings::get( 'discogs_secret' );
+		return CLIB_Settings::valid_discogs_credential( $k ) && CLIB_Settings::valid_discogs_credential( $s ) ? array( $k, $s ) : array();
+	}
+
+	/** Authorization header value: personal token first, else key + secret, else ''. */
+	private function auth_header() {
+		$token = $this->token();
+		if ( '' !== $token ) {
+			return 'Discogs token=' . $token;
+		}
+		$ks = $this->key_secret();
+		return $ks ? 'Discogs key=' . $ks[0] . ', secret=' . $ks[1] : '';
+	}
+
 	public function is_configured() {
-		return '' !== $this->token();
+		return '' !== $this->auth_header();
 	}
 
 	private function get( $url ) {
-		$token = $this->token();
-		if ( '' === $token ) {
+		$auth = $this->auth_header();
+		if ( '' === $auth ) {
 			return null;
 		}
 		CLIB_Lookup::wait_turn( 'discogs', 1100 );
-		return CLIB_Lookup::http_json( $url, array( 'Authorization' => 'Discogs token=' . $token ) );
+		// Credentials travel only in the header, over https, to api.discogs.com (fixed in code).
+		return CLIB_Lookup::http_json( $url, array( 'Authorization' => $auth ) );
 	}
 
 	/** Look the release up again server-side and return its primary image URL. */
