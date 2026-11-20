@@ -159,6 +159,24 @@ public/                   Front-end shortcode
 assets/                   CSS and JavaScript
 ```
 
+## Changelog
+
+### 1.2.0
+- Library pages show full width without the theme sidebar by default (Library - Settings > Page layout).
+- Save / Add / Cancel buttons at the top and bottom of the item form.
+- Discogs setting links straight to the page where the personal access token is created, and to the Discogs API docs and terms.
+
+### 1.1.0
+- Room as a managed List of Values entry linked to Building, seeded from existing data.
+- Music lookups: MusicBrainz + Cover Art Archive, Hymnary.org, IMSLP and Discogs, each toggleable.
+- Music CSV template and music-only export; import flags values not in List of Values.
+- Optional, validated borrower email at check out (staff-only, WordPress privacy export/erase).
+- Image upload lockdown: JPEG/PNG/GIF/WebP only, content-checked, re-encoded, random names, no-exec folder.
+- Bulk edit, full catalog CSV export, editable List of Values, front-end pages and How To guide.
+
+### 1.0.0
+- First release.
+
 ## License
 
 GPL-3.0-or-later. See `LICENSE`.
