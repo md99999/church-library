@@ -58,3 +58,12 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 }
 
 .clib-item-form .clib-submit-top { margin-top: 0; padding-top: 0; }
+
+.clib-score { display: inline-block; font-size: 11px; color: #50575e; background: #f0f0f1; border-radius: 8px; padding: 0 6px; margin-top: 2px; }
+.clib-item-actions { margin-top: 32px; max-width: 760px; }
+.clib-action-form { margin: 8px 0; }
+.clib-action-form .description { margin-left: 6px; }
+.clib-dupe-group { background: #fff; border: 1px solid #dcdcde; padding: 4px 16px 8px; margin: 0 0 16px; }
+.clib-dupe-group h3 { margin: 10px 0 8px; }
+.clib-tools-form .clib-danger, .clib-dupe-group .clib-danger { max-width: none; margin-top: 10px; }
+.clib-lookup-problem { color: #8a2424; margin: 2px 0; font-size: 12px; }

@@ -72,7 +72,7 @@ class CLIB_Reports {
 		);
 		foreach ( $groups as $col => $title ) {
 			// $col is from the fixed array above.
-			$rows = $wpdb->get_results( "SELECT COALESCE(l.label, '(none)') AS label, COUNT(*) AS items, SUM(i.copies) AS copies FROM $items i LEFT JOIN $lov l ON l.id = i.$col GROUP BY l.label ORDER BY items DESC", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_results( "SELECT COALESCE(l.label, '(none)') AS label, COUNT(*) AS items, SUM(i.copies) AS copies FROM $items i LEFT JOIN $lov l ON l.id = i.$col WHERE i.is_archived = 0 GROUP BY l.label ORDER BY items DESC", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$sections[] = array(
 				'title'   => $title,
 				'columns' => $cols,
@@ -84,7 +84,7 @@ class CLIB_Reports {
 			'storage_status' => array( __( 'By Status', 'church-library' ), CLIB_Util::status_labels() ),
 			'item_condition' => array( __( 'By Condition', 'church-library' ), CLIB_Util::condition_labels() ),
 		) as $col => $def ) {
-			$rows = $wpdb->get_results( "SELECT $col AS label, COUNT(*) AS items, SUM(copies) AS copies FROM $items GROUP BY $col ORDER BY items DESC", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_results( "SELECT $col AS label, COUNT(*) AS items, SUM(copies) AS copies FROM $items WHERE is_archived = 0 GROUP BY $col ORDER BY items DESC", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			foreach ( $rows as &$r ) {
 				$r['label'] = '' === $r['label'] ? __( '(none)', 'church-library' ) : CLIB_Util::label( $def[1], $r['label'] );
 			}
@@ -96,7 +96,7 @@ class CLIB_Reports {
 			);
 		}
 
-		$value      = $wpdb->get_row( "SELECT COUNT(*) AS items, SUM(copies) AS copies, SUM(cost * copies) AS value FROM $items", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$value      = $wpdb->get_row( "SELECT COUNT(*) AS items, SUM(copies) AS copies, SUM(cost * copies) AS value FROM $items WHERE is_archived = 0", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$sections[] = array(
 			'title'   => __( 'Totals', 'church-library' ),
 			'columns' => array(

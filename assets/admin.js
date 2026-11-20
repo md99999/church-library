@@ -21,12 +21,21 @@
 		return n;
 	}
 
-	/* Confirm destructive forms. */
+	/* Confirm destructive forms (the server also requires each form's confirmation box). */
+	var confirmText = { merge: t.confirmMerge, fix: t.confirmFix };
 	each('form[data-clib-confirm]', function (f) {
 		f.addEventListener('submit', function (e) {
-			if (!window.confirm(t.confirmDelete || 'Are you sure?')) {
+			var msg = confirmText[f.getAttribute('data-clib-confirm')] || t.confirmDelete || 'Are you sure?';
+			if (!window.confirm(msg)) {
 				e.preventDefault();
 			}
+		});
+	});
+
+	/* Data Tools: "select all" boxes tick every row box in the same form. */
+	each('input.clib-check-all', function (all) {
+		all.addEventListener('change', function () {
+			each('input[name="ids[]"]', function (c) { c.checked = all.checked; }, all.form);
 		});
 	});
 
@@ -172,6 +181,9 @@
 	function render(data) {
 		box.textContent = '';
 		box.hidden = false;
+		(Array.isArray(data.problems) ? data.problems : []).forEach(function (p) {
+			box.appendChild(el('p', { 'class': 'clib-lookup-problem' }, p));
+		});
 		if (data.local && data.local.length) {
 			box.appendChild(el('p', { 'class': 'clib-local-head' }, t.inCatalog || ''));
 			var ul = el('ul');
@@ -199,6 +211,9 @@
 			info.appendChild(el('strong', null, r.title));
 			var meta = [r.creator, r.publisher, r.year, r.identifier].filter(Boolean).join(' · ');
 			info.appendChild(el('div', { 'class': 'description' }, meta + (r.provider_label ? ' (' + r.provider_label + ')' : '')));
+			if (typeof r.score === 'number' && isFinite(r.score)) {
+				info.appendChild(el('span', { 'class': 'clib-score' }, Math.max(0, Math.min(100, Math.round(r.score))) + '% ' + (t.match || 'match')));
+			}
 			li.appendChild(info);
 			var btn = el('button', { type: 'button', 'class': 'button button-small' }, t.use || 'Use');
 			btn.addEventListener('click', function () { applyResult(r); });
@@ -222,6 +237,9 @@
 		var mediaSel = document.getElementById('clib-media');
 		var mOpt = mediaSel && mediaSel.options[mediaSel.selectedIndex];
 		body.append('music', mOpt && mOpt.getAttribute('data-music') === '1' ? '1' : '');
+		// The server decides which sources suit this media type and ranks results by the author typed.
+		body.append('media_type_id', mediaSel && /^[0-9]+$/.test(mediaSel.value) ? mediaSel.value : '');
+		body.append('author', ((document.getElementById('clib-creator') || {}).value || '').slice(0, 255));
 		fetch(cfg.ajaxUrl, {
 			method: 'POST',
 			credentials: 'same-origin',

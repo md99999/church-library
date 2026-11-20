@@ -42,7 +42,7 @@ class CLIB_Lookup {
 
 	/** @return CLIB_Lookup_Provider[] keyed by id. */
 	public static function providers() {
-		$list = apply_filters( 'clib_lookup_providers', array( new CLIB_Lookup_OpenLibrary(), new CLIB_Lookup_MusicBrainz(), new CLIB_Lookup_Hymnary(), new CLIB_Lookup_IMSLP(), new CLIB_Lookup_Discogs() ) );
+		$list = apply_filters( 'clib_lookup_providers', array( new CLIB_Lookup_OpenLibrary(), new CLIB_Lookup_GoogleBooks(), new CLIB_Lookup_TMDB(), new CLIB_Lookup_MusicBrainz(), new CLIB_Lookup_Hymnary(), new CLIB_Lookup_IMSLP(), new CLIB_Lookup_Discogs() ) );
 		$out  = array();
 		foreach ( (array) $list as $p ) {
 			if ( $p instanceof CLIB_Lookup_Provider ) {
@@ -68,9 +68,34 @@ class CLIB_Lookup {
 		return $out;
 	}
 
-	/** Provider kind: 'book' (default) or 'music'. */
+	/** Provider kind: 'book' (default), 'music' or 'video'. */
 	public static function kind( $p ) {
-		return method_exists( $p, 'kind' ) && 'music' === $p->kind() ? 'music' : 'book';
+		$k = method_exists( $p, 'kind' ) ? (string) $p->kind() : 'book';
+		return in_array( $k, array( 'music', 'video' ), true ) ? $k : 'book';
+	}
+
+	/**
+	 * Which kind of source suits a media type: 'music' (flagged as music in
+	 * List of Values), 'video' (DVD, VHS, Blu-ray, video, movie, film), 'book'
+	 * (books, magazines, bibles, hymnals) or '' when unknown (all sources).
+	 * Decided on the server from the stored list entry, not from the browser.
+	 */
+	public static function media_kind( $media_type_id ) {
+		$mt = $media_type_id ? CLIB_LOV::get( (int) $media_type_id ) : null;
+		if ( ! $mt || 'media_type' !== $mt->list_type ) {
+			return '';
+		}
+		if ( (int) $mt->is_music === 1 ) {
+			return 'music';
+		}
+		$text = $mt->code . ' ' . $mt->label;
+		if ( preg_match( '/(DVD|VHS|BLU-?RAY|VIDEO|MOVIE|FILM)/i', $text ) ) {
+			return 'video';
+		}
+		if ( preg_match( '/(BOOK|MAG|BIBLE|HYMNAL|NOVEL|PERIODICAL)/i', $text ) ) {
+			return 'book';
+		}
+		return '';
 	}
 
 	/**
@@ -106,9 +131,13 @@ class CLIB_Lookup {
 		}
 		set_transient( $rl_key, $hits + 1, 5 * MINUTE_IN_SECONDS );
 
-		$type  = CLIB_Util::enum( CLIB_Util::post( 'type', 'title' ), array( 'title', 'isbn' ), 'title' );
-		$query = CLIB_Util::text( CLIB_Util::post( 'q' ), 200 );
-		$music = (bool) CLIB_Util::post( 'music' );
+		$type   = CLIB_Util::enum( CLIB_Util::post( 'type', 'title' ), array( 'title', 'isbn' ), 'title' );
+		$query  = CLIB_Util::text( CLIB_Util::post( 'q' ), 200 );
+		$author = CLIB_Util::text( CLIB_Util::post( 'author' ), 255 );
+		$kind   = self::media_kind( CLIB_Util::int( CLIB_Util::post( 'media_type_id' ) ) );
+		if ( '' === $kind && CLIB_Util::post( 'music' ) ) {
+			$kind = 'music'; // Older cached admin.js.
+		}
 		if ( 'isbn' === $type ) {
 			$query = strtoupper( preg_replace( '/[^0-9Xx]/', '', $query ) );
 			if ( ! in_array( strlen( $query ), array( 10, 12, 13 ), true ) ) {
@@ -124,30 +153,92 @@ class CLIB_Lookup {
 		);
 
 		if ( CLIB_Settings::get( 'lookup_enabled' ) ) {
-			// Music sources first for music items, book sources first otherwise.
-			$providers = self::enabled_providers();
-			uasort(
-				$providers,
-				function ( $a, $b ) use ( $music ) {
-					$ka = 'music' === CLIB_Lookup::kind( $a ) ? 0 : 1;
-					$kb = 'music' === CLIB_Lookup::kind( $b ) ? 0 : 1;
-					return $music ? $ka - $kb : $kb - $ka;
+			// Sources that suit the item's media type run first, in the order shown in
+			// Library - Settings. The others run only if those find nothing, so a DVD
+			// lookup is not slowed down or cluttered by book and music sources.
+			$primary   = array();
+			$secondary = array();
+			foreach ( self::enabled_providers() as $pid => $provider ) {
+				if ( '' === $kind || self::kind( $provider ) === $kind ) {
+					$primary[ $pid ] = $provider;
+				} else {
+					$secondary[ $pid ] = $provider;
 				}
-			);
-			foreach ( $providers as $pid => $provider ) {
-				$cache_key = 'clib_lk_' . md5( $pid . '|' . $type . '|' . strtolower( $query ) );
-				$results   = get_transient( $cache_key );
-				if ( ! is_array( $results ) ) {
+			}
+			$problems = array();
+			$remote   = self::run_providers( $primary, $type, $query, $problems );
+			if ( ! $remote && $secondary ) {
+				$remote = self::run_providers( $secondary, $type, $query, $problems );
+			}
+			$response['problems'] = $problems;
+			// Collate: best title (and author, when typed) match first. Ties keep source order.
+			if ( 'title' === $type ) {
+				foreach ( $remote as $i => &$r ) {
+					$r['score'] = CLIB_Match::result_score( $query, $author, $r['title'], $r['creator'] );
+					$r['order'] = $i;
+				}
+				unset( $r );
+				usort(
+					$remote,
+					function ( $a, $b ) {
+						return $b['score'] === $a['score'] ? $a['order'] - $b['order'] : $b['score'] - $a['score'];
+					}
+				);
+				foreach ( $remote as &$r ) {
+					unset( $r['order'] );
+				}
+				unset( $r );
+			}
+			$response['remote'] = array_slice( $remote, 0, 40 );
+		}
+		wp_send_json_success( $response );
+	}
+
+	/**
+	 * Run providers in order and return their cleaned results (cached per provider + query).
+	 * Sources that did not answer are added to $problems (label + plain reason, no response body).
+	 */
+	private static function run_providers( array $providers, $type, $query, array &$problems ) {
+		$out = array();
+		foreach ( $providers as $pid => $provider ) {
+			$cache_key = 'clib_lk_' . md5( $pid . '|' . $type . '|' . strtolower( $query ) );
+			$results   = get_transient( $cache_key );
+			if ( ! is_array( $results ) ) {
+				self::$last_status = 200;
+				try {
 					$results = $provider->search( $type, $query );
-					$results = is_array( $results ) ? array_slice( $results, 0, 10 ) : array();
-					set_transient( $cache_key, $results, $results ? 12 * HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS ); // Short cache for empty answers (may be a busy service).
+				} catch ( Throwable $e ) {
+					$results = array(); // A broken third-party provider must not break the lookup.
 				}
-				foreach ( $results as $r ) {
-					$response['remote'][] = self::clean_result( $pid, $provider->label(), $r );
+				if ( ! $results && 200 !== self::$last_status ) {
+					$problems[] = self::problem_text( $provider->label(), self::$last_status );
+				}
+				$results = is_array( $results ) ? array_slice( $results, 0, 10 ) : array();
+				set_transient( $cache_key, $results, $results ? 12 * HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS ); // Short cache for empty answers (may be a busy service).
+			}
+			foreach ( $results as $r ) {
+				$clean = self::clean_result( $pid, $provider->label(), $r );
+				if ( '' !== $clean['title'] ) { // Nothing useful to fill in without a title.
+					$out[] = $clean;
 				}
 			}
 		}
-		wp_send_json_success( $response );
+		return $out;
+	}
+
+	/** Plain-language reason a source gave no results. */
+	private static function problem_text( $label, $status ) {
+		$label = sanitize_text_field( $label );
+		if ( 401 === $status || 403 === $status ) {
+			/* translators: %s: source name */
+			return sprintf( __( '%s refused the request: check its API key in Library - Settings.', 'church-library' ), $label );
+		}
+		if ( 429 === $status ) {
+			/* translators: %s: source name */
+			return sprintf( __( '%s is limiting requests right now (quota reached). Try again later, or add an API key in Library - Settings.', 'church-library' ), $label );
+		}
+		/* translators: %s: source name */
+		return sprintf( __( '%s did not answer. Try again in a few minutes.', 'church-library' ), $label );
 	}
 
 	/** Re-sanitize everything a provider returns before it reaches the browser. */
@@ -175,9 +266,9 @@ class CLIB_Lookup {
 		global $wpdb;
 		$t = CLIB_DB::table( 'items' );
 		if ( 'isbn' === $type ) {
-			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, item_code, title FROM $t WHERE REPLACE(identifier, '-', '') = %s LIMIT 5", $query ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, item_code, title FROM $t WHERE is_archived = 0 AND REPLACE(identifier, '-', '') = %s LIMIT 5", $query ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		} else {
-			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, item_code, title FROM $t WHERE title LIKE %s ORDER BY title LIMIT 5", '%' . $wpdb->esc_like( $query ) . '%' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, item_code, title FROM $t WHERE is_archived = 0 AND title LIKE %s ORDER BY title LIMIT 5", '%' . $wpdb->esc_like( $query ) . '%' ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		}
 		$out = array();
 		foreach ( $rows as $r ) {
@@ -210,6 +301,9 @@ class CLIB_Lookup {
 		return CLIB_Items::sideload_image( $url, 'cover-' . sanitize_file_name( $provider_id ) . '.jpg', $title );
 	}
 
+	/** HTTP status of the last provider request (0 = no answer), so failures can be reported. */
+	public static $last_status = 200;
+
 	/** Shared HTTP helper for providers: https only, small, short timeout. Returns the body or null. */
 	public static function http_body( $url, array $headers = array(), $accept = 'application/json' ) {
 		if ( 'https' !== wp_parse_url( (string) $url, PHP_URL_SCHEME ) ) {
@@ -226,7 +320,8 @@ class CLIB_Lookup {
 				'headers'             => array_merge( array( 'Accept' => $accept ), $headers ),
 			)
 		);
-		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+		self::$last_status = is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );
+		if ( 200 !== self::$last_status ) {
 			return null;
 		}
 		return (string) wp_remote_retrieve_body( $res );

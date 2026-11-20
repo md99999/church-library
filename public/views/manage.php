@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $clib_id   = CLIB_Util::int( CLIB_Util::get( 'id' ) );
 $clib_item = $clib_id ? CLIB_Items::get( $clib_id ) : null;
-if ( $clib_id && ! $clib_item ) {
+if ( $clib_id && ( ! $clib_item || (int) $clib_item->is_archived ) ) { // Archived items are edited (or restored) in the dashboard.
 	echo '<p>' . esc_html__( 'Item not found.', 'church-library' ) . '</p>';
 	return;
 }

@@ -30,9 +30,18 @@ $clib_f = function ( $k, $default = '' ) use ( $clib_v ) {
 $clib_title = $clib_item ? __( 'Library - Edit Item', 'church-library' ) : __( 'Library - Add Item', 'church-library' );
 ?>
 <h1><?php echo esc_html( $clib_title ); ?><?php echo $clib_item ? ' <code>' . esc_html( $clib_item->item_code ) . '</code>' : ''; ?></h1>
+<?php if ( $clib_item && (int) $clib_item->is_archived ) : ?>
+	<div class="notice notice-warning inline"><p><?php esc_html_e( 'This item is archived and hidden from the catalog. Use "Restore to catalog" below to bring it back.', 'church-library' ); ?></p></div>
+<?php endif; ?>
 
 <?php
 $clib_form_url    = admin_url( 'admin-post.php' );
 $clib_form_hidden = wp_nonce_field( 'clib_save_item', '_wpnonce', true, false ) . '<input type="hidden" name="action" value="clib_save_item">';
 $clib_cancel_url  = $clib_item ? CLIB_Admin::url( 'clib-catalog', array( 'view' => (int) $clib_item->id ) ) : CLIB_Admin::url( 'clib-catalog' );
 require CLIB_DIR . 'includes/views/item-form.php';
+
+// Archive / Delete sit outside the item form (forms cannot be nested).
+if ( $clib_item ) {
+	$clib_return = 'edit';
+	require CLIB_DIR . 'admin/views/partials/item-actions.php';
+}

@@ -59,7 +59,7 @@ $clib_lov_link = function ( $list ) {
 				<label for="clib-media"><?php esc_html_e( 'Media Type', 'church-library' ); ?> <span class="required">*</span><?php echo $clib_lov_link( 'media_type' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></label>
 				<select id="clib-media" name="media_type_id" required><?php echo CLIB_Form::lov_options( 'media_type', $clib_f( 'media_type_id' ), __( 'Choose...', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 				<?php if ( $clib_item ) : ?>
-					<span class="description"><?php esc_html_e( 'The Item ID keeps its original prefix if the media type changes.', 'church-library' ); ?></span>
+					<span class="description"><?php esc_html_e( 'Changing the media type gives the item a new Item ID with that media type\'s prefix when you save. Reprint its label afterwards.', 'church-library' ); ?></span>
 				<?php endif; ?>
 			</p>
 

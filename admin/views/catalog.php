@@ -34,12 +34,17 @@ $clib_args = array(
 	'church_id'     => CLIB_Util::int( CLIB_Util::get( 'church_id' ) ),
 	'building_id'   => CLIB_Util::int( CLIB_Util::get( 'building_id' ) ),
 	'status'        => CLIB_Util::enum( CLIB_Util::get( 'status' ), CLIB_Util::STATUSES, '' ),
+	// Archived items are listed only for people who can restore them.
+	'archived'      => current_user_can( 'clib_manage_items' ) && '1' === CLIB_Util::get( 'archived' ) ? 1 : 0,
 	'orderby'       => CLIB_Util::enum( CLIB_Util::get( 'orderby' ), array_keys( CLIB_Items::sort_columns() ), 'title' ),
 	'order'         => CLIB_Util::enum( CLIB_Util::get( 'order' ), array( 'asc', 'desc' ), 'asc' ),
 	'page'          => CLIB_Util::int( CLIB_Util::get( 'paged', 1 ), 1, 100000 ),
 	'per_page'      => (int) CLIB_Settings::get( 'per_page' ),
 );
 list( $clib_rows, $clib_total ) = CLIB_Items::search( $clib_args );
+if ( $clib_args['archived'] ) {
+	$clib_bulk_ok = false; // Bulk edit applies to catalog items only.
+}
 $clib_pages                     = max( 1, (int) ceil( $clib_total / $clib_args['per_page'] ) );
 $clib_status                    = CLIB_Util::status_labels();
 
@@ -50,6 +55,7 @@ $clib_filters = array_filter(
 		'church_id'     => $clib_args['church_id'],
 		'building_id'   => $clib_args['building_id'],
 		'status'        => $clib_args['status'],
+		'archived'      => $clib_args['archived'],
 	)
 );
 
@@ -73,6 +79,9 @@ $clib_sort_link = function ( $col, $label ) use ( $clib_args, $clib_filters ) {
 	<select name="church_id" class="clib-church"><?php echo CLIB_Admin::lov_options( 'church', $clib_args['church_id'], __( 'All churches', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="building_id" class="clib-building"><?php echo CLIB_Admin::lov_options( 'building', $clib_args['building_id'], __( 'All buildings', 'church-library' ), false ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="status"><?php echo CLIB_Admin::map_options( $clib_status, $clib_args['status'], __( 'Any status', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<?php if ( current_user_can( 'clib_manage_items' ) ) : ?>
+		<select name="archived" aria-label="<?php esc_attr_e( 'Show', 'church-library' ); ?>"><?php echo CLIB_Admin::map_options( array( '1' => __( 'Archived items', 'church-library' ) ), $clib_args['archived'] ? '1' : '', __( 'Catalog items', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<?php endif; ?>
 	<button class="button"><?php esc_html_e( 'Filter', 'church-library' ); ?></button>
 </form>
 

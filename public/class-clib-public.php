@@ -138,6 +138,7 @@ class CLIB_Public {
 					'inCatalog'     => __( 'Already in your catalog:', 'church-library' ),
 					'error'         => __( 'Lookup failed.', 'church-library' ),
 					'coverChosen'   => __( 'Cover image will be imported when you save.', 'church-library' ),
+					'match'         => __( 'match', 'church-library' ),
 				),
 			)
 		);

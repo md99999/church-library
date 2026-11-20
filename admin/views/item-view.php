@@ -11,7 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $clib_item = CLIB_Items::get( $clib_view_id );
-if ( ! $clib_item ) {
+// Archived items are visible only to people who can restore them.
+if ( ! $clib_item || ( (int) $clib_item->is_archived && ! current_user_can( 'clib_manage_items' ) ) ) {
 	echo '<h1>' . esc_html__( 'Library - Item', 'church-library' ) . '</h1><p>' . esc_html__( 'Item not found.', 'church-library' ) . '</p>';
 	return;
 }
@@ -53,6 +54,14 @@ if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 <?php endif; ?>
 <a class="page-title-action" href="<?php echo esc_url( CLIB_Admin::url( 'clib-catalog' ) ); ?>"><?php esc_html_e( 'Back to catalog', 'church-library' ); ?></a>
 <hr class="wp-header-end">
+<?php if ( (int) $clib_item->is_archived ) : ?>
+	<div class="notice notice-warning inline"><p>
+		<?php
+		/* translators: %s: date */
+		echo esc_html( sprintf( __( 'This item was archived on %s. It is hidden from the catalog, reports, lookups and check out until it is restored.', 'church-library' ), CLIB_Util::fmt_date( $clib_item->archived_at ) ) );
+		?>
+	</p></div>
+<?php endif; ?>
 
 <div class="clib-item-layout">
 	<div class="clib-item-main">
@@ -118,7 +127,7 @@ if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 				</table>
 			<?php endif; ?>
 
-			<?php if ( $clib_available > 0 && 'not_available' !== $clib_item->storage_status ) : ?>
+			<?php if ( $clib_available > 0 && 'not_available' !== $clib_item->storage_status && ! (int) $clib_item->is_archived ) : ?>
 				<h2><?php esc_html_e( 'Check out', 'church-library' ); ?></h2>
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="clib-checkout-form">
 					<?php wp_nonce_field( 'clib_checkout' ); ?>
@@ -158,14 +167,10 @@ if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 			<?php endif; ?>
 		<?php endif; ?>
 
-		<?php if ( current_user_can( 'clib_delete_items' ) ) : ?>
-			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="clib-delete-form" data-clib-confirm="1">
-				<?php wp_nonce_field( 'clib_delete_item_' . (int) $clib_item->id ); ?>
-				<input type="hidden" name="action" value="clib_delete_item">
-				<input type="hidden" name="id" value="<?php echo esc_attr( (int) $clib_item->id ); ?>">
-				<button class="button button-link-delete"><?php esc_html_e( 'Delete item', 'church-library' ); ?></button>
-			</form>
-		<?php endif; ?>
+		<?php
+		$clib_return = 'view';
+		require CLIB_DIR . 'admin/views/partials/item-actions.php';
+		?>
 	</div>
 
 	<?php if ( $clib_item->image_id ) : ?>

@@ -24,6 +24,7 @@ class CLIB_Admin {
 			'clib-reports'     => array( __( 'Reports', 'church-library' ), 'clib_reports', 'reports.php' ),
 			'clib-lists'       => array( __( 'List of Values', 'church-library' ), 'clib_manage_lists', 'lists.php' ),
 			'clib-import'      => array( __( 'Import / Export', 'church-library' ), 'clib_import', 'import.php' ),
+			'clib-tools'       => array( __( 'Data Tools', 'church-library' ), 'clib_delete_items', 'tools.php' ),
 			'clib-settings'    => array( __( 'Settings', 'church-library' ), 'manage_options', 'settings.php' ),
 			'clib-audit'       => array( __( 'Audit Log', 'church-library' ), 'manage_options', 'audit.php' ),
 		);
@@ -37,6 +38,10 @@ class CLIB_Admin {
 		$actions = array(
 			'clib_save_item',
 			'clib_delete_item',
+			'clib_archive_item',
+			'clib_restore_item',
+			'clib_fix_ids',
+			'clib_merge_items',
 			'clib_checkout',
 			'clib_checkin',
 			'clib_save_lov',
@@ -88,6 +93,9 @@ class CLIB_Admin {
 				'lookupEnabled' => (bool) CLIB_Settings::get( 'lookup_enabled' ),
 				'i18n'          => array(
 					'confirmDelete' => __( 'Delete this permanently? This cannot be undone.', 'church-library' ),
+					'confirmMerge'  => __( 'Merge these records? The other records will be deleted and their copies added to the one you keep. This cannot be undone.', 'church-library' ),
+					'confirmFix'    => __( 'Give the ticked items new Item IDs? Labels printed with the old IDs will need to be reprinted.', 'church-library' ),
+					'match'         => __( 'match', 'church-library' ),
 					'searching'     => __( 'Searching...', 'church-library' ),
 					'noResults'     => __( 'No matches found. Please enter the details manually.', 'church-library' ),
 					'use'           => __( 'Use this', 'church-library' ),
@@ -198,16 +206,105 @@ class CLIB_Admin {
 		self::go( 'clib-catalog', array( 'view' => $res['id'] ) );
 	}
 
+	/** Back to the item's view or edit page after an item action (whitelisted). */
+	private static function back_to_item( $id ) {
+		if ( 'edit' === CLIB_Util::enum( CLIB_Util::post( 'return' ), array( 'view', 'edit' ), 'view' ) ) {
+			self::go( 'clib-item', array( 'id' => (int) $id ) );
+		}
+		self::go( 'clib-catalog', array( 'view' => (int) $id ) );
+	}
+
 	public static function handle_delete_item() {
 		$id = CLIB_Util::int( CLIB_Util::post( 'id' ) ); // phpcs:ignore WordPress.Security.NonceVerification -- nonce is bound to this id below.
 		self::guard( 'clib_delete_item_' . $id, 'clib_delete_items' );
+		// The confirmation box is checked here, not only in the browser.
+		if ( '1' !== CLIB_Util::post( 'confirm_delete' ) ) {
+			self::notice( __( 'Nothing was deleted: tick the box to confirm a permanent delete.', 'church-library' ), 'error' );
+			self::back_to_item( $id );
+		}
 		$res = CLIB_Items::delete( $id );
 		if ( is_wp_error( $res ) ) {
 			self::notice_error( $res );
-			self::go( 'clib-catalog', array( 'view' => $id ) );
+			self::back_to_item( $id );
 		}
 		self::notice( __( 'Item deleted.', 'church-library' ) );
 		self::go( 'clib-catalog' );
+	}
+
+	public static function handle_archive_item() {
+		$id = CLIB_Util::int( CLIB_Util::post( 'id' ) ); // phpcs:ignore WordPress.Security.NonceVerification -- nonce is bound to this id below.
+		self::guard( 'clib_archive_item_' . $id, 'clib_manage_items' );
+		$res = CLIB_Items::archive( $id );
+		if ( is_wp_error( $res ) ) {
+			self::notice_error( $res );
+			self::back_to_item( $id );
+		}
+		self::notice( __( 'Item archived. It is hidden from the catalog; find it under Catalog > Archived items to restore it.', 'church-library' ) );
+		self::go( 'clib-catalog' );
+	}
+
+	public static function handle_restore_item() {
+		$id = CLIB_Util::int( CLIB_Util::post( 'id' ) ); // phpcs:ignore WordPress.Security.NonceVerification -- nonce is bound to this id below.
+		self::guard( 'clib_restore_item_' . $id, 'clib_manage_items' );
+		$res = CLIB_Items::restore( $id );
+		if ( is_wp_error( $res ) ) {
+			self::notice_error( $res );
+		} else {
+			self::notice( __( 'Item restored to the catalog.', 'church-library' ) );
+		}
+		self::back_to_item( $id );
+	}
+
+	public static function handle_fix_ids() {
+		self::guard( 'clib_fix_ids', 'clib_delete_items' );
+		if ( ! current_user_can( 'clib_manage_items' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do that.', 'church-library' ), 403 );
+		}
+		if ( '1' !== CLIB_Util::post( 'confirm_fix' ) ) {
+			self::notice( __( 'Nothing was changed: tick the box to confirm.', 'church-library' ), 'error' );
+			self::go( 'clib-tools', array( 'tab' => 'ids' ) );
+		}
+		$ids = CLIB_Util::post( 'ids', array() );
+		$res = CLIB_Tools::fix_ids( is_array( $ids ) ? $ids : array() );
+		if ( is_wp_error( $res ) ) {
+			self::notice_error( $res );
+		} else {
+			/* translators: %d: number of items */
+			self::notice( sprintf( _n( '%d Item ID was regenerated.', '%d Item IDs were regenerated.', count( $res['fixed'] ), 'church-library' ), count( $res['fixed'] ) ) );
+			if ( $res['skipped'] ) {
+				/* translators: %d: number of items */
+				self::notice( sprintf( _n( '%d item was skipped because it no longer needed fixing or no longer exists.', '%d items were skipped because they no longer needed fixing or no longer exist.', $res['skipped'], 'church-library' ), $res['skipped'] ), 'info' );
+			}
+		}
+		self::go( 'clib-tools', array( 'tab' => 'ids' ) );
+	}
+
+	public static function handle_merge_items() {
+		self::guard( 'clib_merge_items', 'clib_delete_items' );
+		if ( ! current_user_can( 'clib_manage_items' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do that.', 'church-library' ), 403 );
+		}
+		// Return to the same duplicate list (whitelisted values only).
+		$back = array_filter(
+			array(
+				'tab'           => 'dupes',
+				'close'         => '1' === CLIB_Util::post( 'close' ) ? 1 : 0,
+				'media_type_id' => CLIB_Util::int( CLIB_Util::post( 'media_type_id' ) ),
+			)
+		);
+		if ( '1' !== CLIB_Util::post( 'confirm_merge' ) ) {
+			self::notice( __( 'Nothing was merged: tick the box to confirm.', 'church-library' ), 'error' );
+			self::go( 'clib-tools', $back );
+		}
+		$ids = CLIB_Util::post( 'ids', array() );
+		$res = CLIB_Tools::merge( CLIB_Util::int( CLIB_Util::post( 'keep' ) ), is_array( $ids ) ? $ids : array() );
+		if ( is_wp_error( $res ) ) {
+			self::notice_error( $res );
+		} else {
+			/* translators: 1: number of records 2: item id 3: copies */
+			self::notice( sprintf( __( 'Merged %1$d records into %2$s, which now has %3$d copies.', 'church-library' ), count( $res['merged'] ), $res['item_code'], $res['copies'] ) );
+		}
+		self::go( 'clib-tools', $back );
 	}
 
 	public static function handle_checkout() {
@@ -346,7 +443,7 @@ class CLIB_Admin {
 		CLIB_Settings::save( $settings );
 		if ( CLIB_Settings::$rejected ) {
 			/* translators: %s: list of setting names */
-			self::notice( sprintf( __( 'Not saved (only letters and digits are allowed; the previous value was kept): %s.', 'church-library' ), implode( ', ', CLIB_Settings::$rejected ) ), 'error' );
+			self::notice( sprintf( __( 'Not saved (the value was not in the expected format; the previous value was kept): %s.', 'church-library' ), implode( ', ', CLIB_Settings::$rejected ) ), 'error' );
 		}
 		CLIB_Layout::apply_templates();
 		$matrix = CLIB_Util::post( 'perm', array() );

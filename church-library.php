@@ -3,7 +3,7 @@
  * Plugin Name:       Church Library
  * Plugin URI:        https://github.com/md99999/church-library
  * Description:       Multi-church library catalog with check out / check in, locations, reports, CSV import and role-based permissions.
- * Version:           1.2.2
+ * Version:           1.3.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Bill Mantz
@@ -28,8 +28,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // No direct access.
 }
 
-define( 'CLIB_VERSION', '1.2.2' );
-define( 'CLIB_DB_VERSION', '5' );
+define( 'CLIB_VERSION', '1.3.0' );
+define( 'CLIB_DB_VERSION', '6' ); // 6: items.is_archived / archived_at.
 define( 'CLIB_FILE', __FILE__ );
 define( 'CLIB_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CLIB_URL', plugin_dir_url( __FILE__ ) );
@@ -45,8 +45,11 @@ require_once CLIB_DIR . 'includes/class-clib-lov.php';
 require_once CLIB_DIR . 'includes/class-clib-items.php';
 require_once CLIB_DIR . 'includes/class-clib-loans.php';
 require_once CLIB_DIR . 'includes/class-clib-reports.php';
+require_once CLIB_DIR . 'includes/class-clib-match.php';
 require_once CLIB_DIR . 'includes/class-clib-lookup.php';
 require_once CLIB_DIR . 'includes/class-clib-lookup-music.php';
+require_once CLIB_DIR . 'includes/class-clib-lookup-media.php';
+require_once CLIB_DIR . 'includes/class-clib-tools.php';
 require_once CLIB_DIR . 'includes/class-clib-import.php';
 require_once CLIB_DIR . 'includes/class-clib-privacy.php';
 require_once CLIB_DIR . 'includes/class-clib-layout.php';
