@@ -14,6 +14,21 @@ list( $clib_rows, $clib_total ) = CLIB_Audit::page( $clib_page, 50 );
 $clib_pages                  = max( 1, (int) ceil( $clib_total / 50 ) );
 ?>
 <h1><?php esc_html_e( 'Library - Audit Log', 'church-library' ); ?></h1>
+
+<?php
+// Page links are shown above and below the list.
+$clib_pager = $clib_pages > 1 ? (string) paginate_links(
+	array(
+		'base'    => add_query_arg( 'paged', '%#%', CLIB_Admin::url( 'clib-audit' ) ),
+		'format'  => '',
+		'current' => $clib_page,
+		'total'   => $clib_pages,
+	)
+) : '';
+?>
+<?php if ( $clib_pager ) : ?>
+	<div class="tablenav top"><div class="tablenav-pages"><?php echo wp_kses_post( $clib_pager ); ?></div></div>
+<?php endif; ?>
 <table class="widefat striped">
 	<thead><tr>
 		<th><?php esc_html_e( 'When', 'church-library' ); ?></th>
@@ -46,19 +61,6 @@ $clib_pages                  = max( 1, (int) ceil( $clib_total / 50 ) );
 	<?php endforeach; ?>
 	</tbody>
 </table>
-<?php if ( $clib_pages > 1 ) : ?>
-	<div class="tablenav"><div class="tablenav-pages">
-		<?php
-		echo wp_kses_post(
-			paginate_links(
-				array(
-					'base'    => add_query_arg( 'paged', '%#%', CLIB_Admin::url( 'clib-audit' ) ),
-					'format'  => '',
-					'current' => $clib_page,
-					'total'   => $clib_pages,
-				)
-			)
-		);
-		?>
-	</div></div>
+<?php if ( $clib_pager ) : ?>
+	<div class="tablenav bottom"><div class="tablenav-pages"><?php echo wp_kses_post( $clib_pager ); ?></div></div>
 <?php endif; ?>

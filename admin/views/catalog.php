@@ -83,6 +83,21 @@ $clib_sort_link = function ( $col, $label ) use ( $clib_args, $clib_filters ) {
 	?>
 </p>
 
+<?php
+// Page links are shown above and below the list.
+$clib_pager = $clib_pages > 1 ? (string) paginate_links(
+	array(
+		'base'    => add_query_arg( 'paged', '%#%', CLIB_Admin::url( 'clib-catalog', array_merge( $clib_filters, array( 'orderby' => $clib_args['orderby'], 'order' => $clib_args['order'] ) ) ) ),
+		'format'  => '',
+		'current' => $clib_args['page'],
+		'total'   => $clib_pages,
+	)
+) : '';
+?>
+<?php if ( $clib_pager ) : ?>
+	<div class="tablenav top"><div class="tablenav-pages"><?php echo wp_kses_post( $clib_pager ); ?></div></div>
+<?php endif; ?>
+
 <?php if ( $clib_bulk_ok && $clib_rows ) : ?>
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="clib-bulk-form">
 	<?php wp_nonce_field( 'clib_bulk_prepare' ); ?>
@@ -180,19 +195,6 @@ $clib_sort_link = function ( $col, $label ) use ( $clib_args, $clib_filters ) {
 </form>
 <?php endif; ?>
 
-<?php if ( $clib_pages > 1 ) : ?>
-	<div class="tablenav"><div class="tablenav-pages">
-		<?php
-		echo wp_kses_post(
-			paginate_links(
-				array(
-					'base'    => add_query_arg( 'paged', '%#%', CLIB_Admin::url( 'clib-catalog', array_merge( $clib_filters, array( 'orderby' => $clib_args['orderby'], 'order' => $clib_args['order'] ) ) ) ),
-					'format'  => '',
-					'current' => $clib_args['page'],
-					'total'   => $clib_pages,
-				)
-			)
-		);
-		?>
-	</div></div>
+<?php if ( $clib_pager ) : ?>
+	<div class="tablenav bottom"><div class="tablenav-pages"><?php echo wp_kses_post( $clib_pager ); ?></div></div>
 <?php endif; ?>

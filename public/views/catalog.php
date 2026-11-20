@@ -157,6 +157,22 @@ $clib_page_id                   = CLIB_Util::int( CLIB_Util::get( 'page_id' ) );
 	?>
 </p>
 
+<?php
+// Page links are shown above and below the list.
+$clib_pager = $clib_pages > 1 ? (string) paginate_links(
+	array(
+		'base'     => add_query_arg( 'clib_page', '%#%' ), // paginate_links() runs esc_url() on output.
+		'format'   => '',
+		'current'  => $clib_args['page'],
+		'total'    => $clib_pages,
+		'add_args' => false,
+	)
+) : '';
+?>
+<?php if ( $clib_pager ) : ?>
+	<nav class="clib-pages clib-pages-top" aria-label="<?php esc_attr_e( 'Pages (top)', 'church-library' ); ?>"><?php echo wp_kses_post( $clib_pager ); ?></nav>
+<?php endif; ?>
+
 <?php if ( $clib_rows ) : ?>
 	<ul class="clib-grid">
 		<?php foreach ( $clib_rows as $clib_r ) : ?>
@@ -185,20 +201,6 @@ $clib_page_id                   = CLIB_Util::int( CLIB_Util::get( 'page_id' ) );
 	<p><?php esc_html_e( 'No items found.', 'church-library' ); ?></p>
 <?php endif; ?>
 
-<?php if ( $clib_pages > 1 ) : ?>
-	<nav class="clib-pages" aria-label="<?php esc_attr_e( 'Pages', 'church-library' ); ?>">
-		<?php
-		echo wp_kses_post(
-			paginate_links(
-				array(
-					'base'     => add_query_arg( 'clib_page', '%#%' ), // paginate_links() runs esc_url() on output.
-					'format'   => '',
-					'current'  => $clib_args['page'],
-					'total'    => $clib_pages,
-					'add_args' => false,
-				)
-			)
-		);
-		?>
-	</nav>
+<?php if ( $clib_pager ) : ?>
+	<nav class="clib-pages clib-pages-bottom" aria-label="<?php esc_attr_e( 'Pages (bottom)', 'church-library' ); ?>"><?php echo wp_kses_post( $clib_pager ); ?></nav>
 <?php endif; ?>
