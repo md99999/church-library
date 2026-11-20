@@ -41,6 +41,7 @@ class CLIB_Admin {
 			'clib_archive_item',
 			'clib_restore_item',
 			'clib_fix_ids',
+			'clib_validate_prefixes',
 			'clib_merge_items',
 			'clib_checkout',
 			'clib_checkin',
@@ -277,6 +278,21 @@ class CLIB_Admin {
 			}
 		}
 		self::go( 'clib-tools', array( 'tab' => 'ids' ) );
+	}
+
+	/** Settings > Validate ID prefixes: read-only check; the result is shown on the settings page. */
+	public static function handle_validate_prefixes() {
+		self::guard( 'clib_validate_prefixes', 'manage_options' );
+		$res = CLIB_Tools::validate_prefixes();
+		set_transient( 'clib_prefix_check_' . get_current_user_id(), $res, 10 * MINUTE_IN_SECONDS );
+		if ( $res['problems'] ) {
+			/* translators: %d: number of problems */
+			self::notice( sprintf( _n( 'ID prefix check: %d problem found. See "Item ID prefixes" below.', 'ID prefix check: %d problems found. See "Item ID prefixes" below.', $res['problems'], 'church-library' ), $res['problems'] ), 'warning' );
+		} else {
+			self::notice( __( 'ID prefix check: every media type has its own valid prefix and every Item ID matches its media type.', 'church-library' ) );
+		}
+		wp_safe_redirect( self::url( 'clib-settings' ) . '#clib-prefixes' );
+		exit;
 	}
 
 	public static function handle_merge_items() {

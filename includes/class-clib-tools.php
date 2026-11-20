@@ -68,6 +68,110 @@ class CLIB_Tools {
 	}
 
 	/**
+	 * Validate the media type prefix setup and count mismatched Item IDs per
+	 * media type. Read only.
+	 *
+	 * Checks each media type's ID prefix code: present (2-10 letters/digits),
+	 * stored in clean form, not shared with another media type, and not the
+	 * ITEM fallback that types without a code use.
+	 *
+	 * @return array [ 'types' => rows[], 'problems' => int, 'mismatched' => int, 'checked_at' => string ]
+	 */
+	public static function validate_prefixes() {
+		global $wpdb;
+		$items = CLIB_DB::table( 'items' );
+		$types = CLIB_LOV::all( 'media_type' );
+
+		// Items per media type, and how many carry the wrong prefix.
+		$counts = array();
+		$rows   = $wpdb->get_results( $wpdb->prepare( "SELECT media_type_id, item_code FROM $items LIMIT %d", self::MAX_SCAN ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ( (array) $rows as $r ) {
+			$mid = (int) $r->media_type_id;
+			if ( ! isset( $counts[ $mid ] ) ) {
+				$counts[ $mid ] = array( 0, 0, CLIB_Items::prefix_for( $mid ) );
+			}
+			++$counts[ $mid ][0];
+			if ( CLIB_Items::code_prefix( $r->item_code ) !== $counts[ $mid ][2] ) {
+				++$counts[ $mid ][1];
+			}
+		}
+
+		$by_prefix = array();
+		foreach ( $types as $t ) {
+			$by_prefix[ CLIB_Items::prefix_for( (int) $t->id ) ][] = (int) $t->id;
+		}
+
+		$out      = array();
+		$problems = 0;
+		$bad      = 0;
+		foreach ( $types as $t ) {
+			$id     = (int) $t->id;
+			$raw    = (string) $t->code;
+			$clean  = CLIB_Util::code( $raw, 10 );
+			$prefix = CLIB_Items::prefix_for( $id );
+			$issues = array();
+			if ( '' === $raw ) {
+				$issues[] = __( 'No ID prefix code: its items get the ITEM prefix. Set a code in List of Values.', 'church-library' );
+			} elseif ( $clean !== $raw ) {
+				/* translators: %s: cleaned prefix */
+				$issues[] = sprintf( __( 'The stored code contains characters other than A-Z and 0-9; it is used as %s.', 'church-library' ), $clean );
+			} elseif ( strlen( $clean ) < 2 ) {
+				$issues[] = __( 'The code is shorter than 2 characters.', 'church-library' );
+			}
+			if ( count( $by_prefix[ $prefix ] ) > 1 ) {
+				$others = array();
+				foreach ( $by_prefix[ $prefix ] as $oid ) {
+					if ( $oid !== $id ) {
+						$others[] = CLIB_LOV::label( $oid );
+					}
+				}
+				/* translators: 1: prefix 2: other media types */
+				$issues[] = sprintf( __( 'Prefix %1$s is also used by: %2$s. Item IDs cannot tell these media types apart.', 'church-library' ), $prefix, implode( ', ', $others ) );
+			}
+			$n       = isset( $counts[ $id ] ) ? $counts[ $id ][0] : 0;
+			$wrong   = isset( $counts[ $id ] ) ? $counts[ $id ][1] : 0;
+			if ( $wrong ) {
+				/* translators: %d: number of items */
+				$issues[] = sprintf( _n( '%d item has an ID with a different prefix.', '%d items have an ID with a different prefix.', $wrong, 'church-library' ), $wrong );
+			}
+			$problems += count( $issues );
+			$bad      += $wrong;
+			$out[]     = array(
+				'id'      => $id,
+				'label'   => (string) $t->label,
+				'prefix'  => $prefix,
+				'active'  => (int) $t->is_active,
+				'items'   => $n,
+				'wrong'   => $wrong,
+				'issues'  => $issues,
+			);
+		}
+		// Items whose media type no longer exists.
+		foreach ( $counts as $mid => $c ) {
+			if ( ! isset( $types[ $mid ] ) ) {
+				/* translators: %d: number of items */
+				$out[]     = array(
+					'id'     => $mid,
+					'label'  => __( '(missing media type)', 'church-library' ),
+					'prefix' => 'ITEM',
+					'active' => 0,
+					'items'  => $c[0],
+					'wrong'  => $c[1],
+					'issues' => array( sprintf( _n( '%d item points to a media type that no longer exists.', '%d items point to a media type that no longer exists.', $c[0], 'church-library' ), $c[0] ) ),
+				);
+				++$problems;
+				$bad += $c[1];
+			}
+		}
+		return array(
+			'types'      => $out,
+			'problems'   => $problems,
+			'mismatched' => $bad,
+			'checked_at' => CLIB_Util::now(),
+		);
+	}
+
+	/**
 	 * Give each listed item a new Item ID that matches its media type.
 	 * Only items that are still mismatched are changed. All or nothing.
 	 *
