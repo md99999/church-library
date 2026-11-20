@@ -344,6 +344,10 @@ class CLIB_Admin {
 		}
 
 		CLIB_Settings::save( $settings );
+		if ( CLIB_Settings::$rejected ) {
+			/* translators: %s: list of setting names */
+			self::notice( sprintf( __( 'Not saved (only letters and digits are allowed; the previous value was kept): %s.', 'church-library' ), implode( ', ', CLIB_Settings::$rejected ) ), 'error' );
+		}
 		CLIB_Layout::apply_templates();
 		$matrix = CLIB_Util::post( 'perm', array() );
 		CLIB_Perms::save_matrix( is_array( $matrix ) ? $matrix : array() );

@@ -24,6 +24,8 @@ class CLIB_Settings {
 			'lookup_enabled'   => 1,  // Title / ISBN lookup master switch.
 			'lookup_providers' => array( 'openlibrary', 'musicbrainz', 'hymnary', 'imslp' ),
 			'discogs_token'    => '',
+			'discogs_key'      => '',
+			'discogs_secret'   => '',
 			'full_width'       => 1,  // Library pages without the theme sidebar.
 			'show_borrowers'   => 0,  // Show "checked out by" names to view-only users.
 			'uninstall_delete' => 0,  // Drop tables on uninstall.
@@ -50,6 +52,14 @@ class CLIB_Settings {
 		return isset( $all[ $key ] ) ? $all[ $key ] : null;
 	}
 
+	/** Fields rejected by the last sanitize() call (for an admin notice). */
+	public static $rejected = array();
+
+	/** Discogs consumer key / secret: letters and digits only, sane length. */
+	public static function valid_discogs_credential( $v ) {
+		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9]{10,64}$/', $v );
+	}
+
 	/** Sanitize a raw settings array (from POST). Unknown keys are dropped. */
 	public static function sanitize( $raw ) {
 		$raw = is_array( $raw ) ? $raw : array();
@@ -69,10 +79,36 @@ class CLIB_Settings {
 
 		// Token: blank keeps the saved one; "clear" box removes it; otherwise it must look like a Discogs token.
 		$token = isset( $raw['discogs_token'] ) && is_string( $raw['discogs_token'] ) ? trim( wp_unslash( $raw['discogs_token'] ) ) : '';
+		self::$rejected = array();
 		if ( ! empty( $raw['discogs_token_clear'] ) ) {
 			$out['discogs_token'] = '';
 		} elseif ( '' !== $token ) {
-			$out['discogs_token'] = preg_match( '/^[A-Za-z0-9]{20,64}$/', $token ) ? $token : $out['discogs_token'];
+			if ( preg_match( '/^[A-Za-z0-9]{20,64}$/', $token ) ) {
+				$out['discogs_token'] = $token;
+			} else {
+				self::$rejected[] = __( 'Discogs personal access token', 'church-library' );
+			}
+		}
+
+		// Consumer key + secret: same rules (blank keeps, clear box removes, must be letters/digits).
+		if ( ! empty( $raw['discogs_app_clear'] ) ) {
+			$out['discogs_key']    = '';
+			$out['discogs_secret'] = '';
+		} else {
+			foreach ( array(
+				'discogs_key'    => __( 'Discogs consumer key', 'church-library' ),
+				'discogs_secret' => __( 'Discogs consumer secret', 'church-library' ),
+			) as $field => $label ) {
+				$v = isset( $raw[ $field ] ) && is_string( $raw[ $field ] ) ? trim( wp_unslash( $raw[ $field ] ) ) : '';
+				if ( '' === $v ) {
+					continue;
+				}
+				if ( self::valid_discogs_credential( $v ) ) {
+					$out[ $field ] = $v;
+				} else {
+					self::$rejected[] = $label;
+				}
+			}
 		}
 		return $out;
 	}
