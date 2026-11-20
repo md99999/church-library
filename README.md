@@ -161,6 +161,9 @@ assets/                   CSS and JavaScript
 
 ## Changelog
 
+### 1.2.2
+- Page links (1 2 3 Next) shown above the list as well as below, on the front-end catalog, the admin catalog and the audit log.
+
 ### 1.2.1
 - Discogs can use a registered app's consumer key and secret instead of a personal access token (validated; never shown back on the settings page).
 - Settings shows an error when a Discogs credential is rejected, instead of silently keeping the old value.
