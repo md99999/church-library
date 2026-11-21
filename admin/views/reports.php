@@ -95,7 +95,7 @@ foreach ( $clib_data as $clib_section ) :
 							echo '<span class="clib-tickbox" role="img" aria-label="' . esc_attr__( 'Found: tick on paper', 'church-library' ) . '"></span>';
 						} elseif ( 'edit' === $clib_col ) {
 							if ( $clib_item_id && $clib_can_edit ) {
-								echo '<a href="' . esc_url( CLIB_Admin::url( 'clib-item', array( 'id' => $clib_item_id ) ) ) . '">' . esc_html__( 'Edit', 'church-library' ) . '</a>';
+								echo '<a href="' . esc_url( CLIB_Admin::url( 'clib-item', array( 'id' => $clib_item_id ) ) ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Edit', 'church-library' ) . '<span class="screen-reader-text"> ' . esc_html__( '(opens in a new tab)', 'church-library' ) . '</span></a>';
 							}
 						} elseif ( 'title' === $clib_col && $clib_item_id ) {
 							echo '<a href="' . esc_url( CLIB_Admin::url( 'clib-catalog', array( 'view' => $clib_item_id ) ) ) . '">' . esc_html( $clib_val ) . '</a>';
