@@ -29,6 +29,8 @@ class CLIB_Import {
 			'barcode'         => 'barcode',
 			'call'            => 'call_number',
 			'callnumber'      => 'call_number',
+			'cat'             => 'call_number',
+			'catnumber'       => 'call_number',
 			'classification'  => 'classification',
 			'cost'            => 'cost',
 			'costin2007'      => 'cost',

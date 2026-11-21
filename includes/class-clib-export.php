@@ -34,7 +34,7 @@ class CLIB_Export {
 			'Condition'          => function ( $i ) use ( $cond ) { return CLIB_Util::label( $cond, $i->item_condition ); },
 			'ISBN or Identifier' => function ( $i ) { return $i->identifier; },
 			'Barcode'            => function ( $i ) { return $i->barcode; },
-			'Call #'             => function ( $i ) { return $i->call_number; },
+			'Cat #'             => function ( $i ) { return $i->call_number; },
 			'Owned By'           => function ( $i ) { return $i->owned_by; },
 			'Church Name'        => function ( $i ) use ( $lov ) { return call_user_func( $lov, $i->church_id ); },
 			'Building'           => function ( $i ) use ( $lov ) { return call_user_func( $lov, $i->building_id ); },

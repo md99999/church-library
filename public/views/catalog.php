@@ -34,7 +34,7 @@ if ( '' !== $clib_code ) :
 		__( 'Classification', 'church-library' )    => CLIB_LOV::label( $clib_item->classification_id ),
 		__( 'Liturgical Use', 'church-library' )    => $clib_item->liturgical_use,
 		__( 'ISBN / Identifier', 'church-library' ) => $clib_item->identifier,
-		__( 'Call #', 'church-library' )            => $clib_item->call_number,
+		__( 'Cat #', 'church-library' )            => $clib_item->call_number,
 		__( 'Condition', 'church-library' )         => CLIB_Util::label( CLIB_Util::condition_labels(), $clib_item->item_condition ),
 		__( 'Church', 'church-library' )            => CLIB_LOV::label( $clib_item->church_id ),
 		__( 'Building', 'church-library' )          => CLIB_LOV::label( $clib_item->building_id ),
