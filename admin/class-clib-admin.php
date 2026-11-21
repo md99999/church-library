@@ -118,6 +118,7 @@ class CLIB_Admin {
 		echo '<div class="wrap clib-wrap">';
 		self::print_notices();
 		include CLIB_DIR . 'admin/views/' . $pages[ $page ][2]; // Fixed whitelist: no user input reaches the path.
+		echo CLIB_Attribution::footer_html(); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder.
 		echo '</div>';
 	}
 

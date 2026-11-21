@@ -98,6 +98,9 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 						?>
 						<label><input type="checkbox" name="clib[lookup_providers][]" value="<?php echo esc_attr( $clib_pid ); ?>" <?php checked( in_array( $clib_pid, (array) $clib_s['lookup_providers'], true ) ); ?>>
 							<?php echo esc_html( isset( $clib_pdesc[ $clib_pid ] ) ? $clib_pdesc[ $clib_pid ] : $clib_p->label() ); ?></label>
+						<?php if ( 'tmdb' === $clib_pid ) : ?>
+							<?php echo CLIB_Attribution::credit_html( 'tmdb', 'clib-credit clib-credit-inline' ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?>
+						<?php endif; ?>
 						<?php if ( isset( $clib_plinks[ $clib_pid ] ) ) : ?>
 							<?php foreach ( $clib_plinks[ $clib_pid ] as $clib_lurl => $clib_ltext ) : ?>
 								&middot; <a href="<?php echo esc_url( $clib_lurl, array( 'https' ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $clib_ltext ); ?> <span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'church-library' ); ?></span>&#8599;</a>

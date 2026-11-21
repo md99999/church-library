@@ -69,3 +69,8 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 .clib-lookup-problem { color: #8a2424; margin: 2px 0; font-size: 12px; }
 .clib-prefix-table { max-width: 960px; margin-bottom: 8px; }
 .clib-prefix-issues { margin: 0; color: #8a2424; }
+
+.clib-credit { font-size: 11px; color: #646970; margin: 6px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.clib-credit-logo { height: 10px; width: auto; vertical-align: middle; }
+.clib-credits-footer { margin-top: 24px; border-top: 1px solid #dcdcde; padding-top: 8px; }
+.clib-credit-inline { margin: 2px 0 6px 24px; }
