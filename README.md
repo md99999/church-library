@@ -23,7 +23,7 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 - **Check out / check in** desk with borrower name and contact, due dates, multiple copies per item, overdue highlighting, return condition and full loan history. Status changes between *Checked In* and *Checked Out* automatically; *Not Available* is set by staff.
 - **Reports**: collection summary (by media type, church, building, status, condition, totals), currently checked out, overdue, circulation history by date range, an inventory/shelf list sorted by location, an **Inventory Checklist** and a **Missing Data Audit**. Every report can be downloaded as CSV or printed.
   - *Inventory Checklist* is a printable stock-taking sheet: one row per item with Item ID, Title, Creator/Author, Media Type, Cat #, Building, Room, Copies, Barcode and an empty *Found* box to tick on paper, plus *Counted by* and *Date* lines. Filter by church, building, room, media type and status; sort by location, cat #, title or Item ID; optionally start a new page for each room. The column headings repeat on every printed page, rows are never split across pages, and pages are numbered (page numbers need Chrome or Edge).
-  - *Missing Data Audit* counts how many items are missing each of: image (none set, or the media file was deleted), creator/author, publisher, ISBN/identifier, description, classification, church, building, room, cat #, barcode and condition, then lists the items with the most gaps first and an *Edit* link for each. Filter by the missing field, church, building, room and media type.
+  - *Missing Data Audit* counts how many items are missing each of: image (none set, or the media file was deleted), creator/author, publisher, ISBN/identifier, description, classification, church, building, room, cat #, barcode and condition, then lists the items with the most gaps first and an *Edit* link for each (opens in a new tab). Filter by the missing field, church, building, room and media type.
   - Archived items are left out of every report. Each run shows at most 5,000 rows; narrow the filters for more.
 - **List of Values** managed by admins: every dropdown (media types, music sub-categories, churches, buildings linked to a church, rooms linked to a building, classifications, liturgical uses, conditions and music difficulty levels) can be added to, renamed, reordered, hidden or deleted when unused. Starting values are seeded on activation.
 - **CSV import** for existing spreadsheets (save the sheet as *CSV UTF-8*). Headings such as `Barcode`, `Cat #` (or `Call #`), `Title`, `Author's Name`, `Classification` and `Cost` are recognised automatically, with preview mode and duplicate skipping.
@@ -171,6 +171,9 @@ assets/                   CSS and JavaScript
 ```
 
 ## Changelog
+
+### 1.3.6
+- Missing Data Audit: the *Edit* links open the item in a new tab, so the report stays open while you fix items.
 
 ### 1.3.5
 - New report: **Inventory Checklist**, a printable stock-taking sheet with a *Found* box per item, *Counted by* / *Date* lines, filters (church, building, room, media type, status), sort by location, cat #, title or Item ID, and an option to start a new page for each room. Printed pages repeat the column headings, keep each row whole and are numbered.
