@@ -42,7 +42,7 @@ class CLIB_Lookup {
 
 	/** @return CLIB_Lookup_Provider[] keyed by id. */
 	public static function providers() {
-		$list = apply_filters( 'clib_lookup_providers', array( new CLIB_Lookup_OpenLibrary(), new CLIB_Lookup_GoogleBooks(), new CLIB_Lookup_TMDB(), new CLIB_Lookup_MusicBrainz(), new CLIB_Lookup_Hymnary(), new CLIB_Lookup_IMSLP(), new CLIB_Lookup_Discogs() ) );
+		$list = apply_filters( 'clib_lookup_providers', array( new CLIB_Lookup_OpenLibrary(), new CLIB_Lookup_GoogleBooks(), new CLIB_Lookup_Wikidata(), new CLIB_Lookup_MusicBrainz(), new CLIB_Lookup_Hymnary(), new CLIB_Lookup_IMSLP(), new CLIB_Lookup_Discogs() ) );
 		$out  = array();
 		foreach ( (array) $list as $p ) {
 			if ( $p instanceof CLIB_Lookup_Provider ) {
@@ -190,7 +190,7 @@ class CLIB_Lookup {
 				unset( $r );
 			}
 			$response['remote'] = array_slice( $remote, 0, 40 );
-			// Credits for the sources shown (TMDB requires attribution wherever its data appears).
+			// Credits for the sources shown (for example Google Books).
 			$response['credits'] = array();
 			foreach ( array_unique( wp_list_pluck( $response['remote'], 'provider' ) ) as $pid ) {
 				$credit = CLIB_Attribution::for_provider( $pid );
@@ -308,7 +308,7 @@ class CLIB_Lookup {
 		}
 		$id = CLIB_Items::sideload_image( $url, 'cover-' . sanitize_file_name( $provider_id ) . '.jpg', $title );
 		if ( ! is_wp_error( $id ) ) {
-			CLIB_Attribution::record_cover( $id, $provider_id ); // For the image credit (TMDB terms).
+			CLIB_Attribution::record_cover( $id, $provider_id ); // For the image credit.
 		}
 		return $id;
 	}

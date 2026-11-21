@@ -221,18 +221,12 @@
 			list.appendChild(li);
 		});
 		box.appendChild(list);
-		/* Source credits (TMDB terms require attribution next to its data). */
+		/* Source credits (for example Google Books). */
 		(Array.isArray(data.credits) ? data.credits : []).forEach(function (c) {
 			if (!c || typeof c.text !== 'string') { return; }
 			var p = el('p', { 'class': 'clib-credit' });
 			if (typeof c.url === 'string' && /^https:\/\//.test(c.url)) {
-				var a = el('a', { href: c.url, target: '_blank', rel: 'noopener noreferrer' });
-				if (typeof c.logo === 'string' && /^https?:\/\//.test(c.logo)) {
-					a.appendChild(el('img', { src: c.logo, alt: String(c.name || ''), 'class': 'clib-credit-logo', width: '80', height: '10' }));
-				} else {
-					a.textContent = String(c.name || '');
-				}
-				p.appendChild(a);
+				p.appendChild(el('a', { href: c.url, target: '_blank', rel: 'noopener noreferrer' }, String(c.name || '')));
 				p.appendChild(document.createTextNode(' '));
 			}
 			p.appendChild(document.createTextNode(c.text));
