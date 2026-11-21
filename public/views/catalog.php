@@ -107,27 +107,121 @@ if ( '' !== $clib_code ) :
 endif;
 
 /* ---------------------------------------------------------------- Search / browse */
-$clib_args = array(
-	'q'                 => CLIB_Util::text( CLIB_Util::get( 'clib_q' ), 100 ),
-	'media_type_id'     => CLIB_Util::int( CLIB_Util::get( 'clib_type' ) ),
-	'church_id'         => CLIB_Util::int( CLIB_Util::get( 'clib_church' ) ),
-	'building_id'       => CLIB_Util::int( CLIB_Util::get( 'clib_building' ) ),
-	'classification_id' => CLIB_Util::int( CLIB_Util::get( 'clib_class' ) ),
+/*
+ * This form is public (no login when the catalog is public), so every value is
+ * treated as hostile: each parameter is read through a typed helper (text with
+ * a hard length cap, integer, or whitelisted enum), only bound as a prepared
+ * value in CLIB_Items::search(), and escaped again on output. Nothing from the
+ * request reaches SQL text, a file path, an include or a shell command.
+ */
+$clib_sorts    = array( 'title', 'creator', 'item_code', 'updated_at' );
+$clib_per_page = CLIB_Util::int( CLIB_Settings::get( 'per_page' ), 5, 200 ); // Never 0: also guards the page-count division below.
+$clib_args     = array(
+	'q'                 => CLIB_Util::search_term( CLIB_Util::get( 'clib_q' ) ),
+	'media_type_id'     => CLIB_Util::int( CLIB_Util::get( 'clib_type' ), 0, 4294967295 ),
+	'church_id'         => CLIB_Util::int( CLIB_Util::get( 'clib_church' ), 0, 4294967295 ),
+	'building_id'       => CLIB_Util::int( CLIB_Util::get( 'clib_building' ), 0, 4294967295 ),
+	'classification_id' => CLIB_Util::int( CLIB_Util::get( 'clib_class' ), 0, 4294967295 ),
 	'status'            => CLIB_Util::enum( CLIB_Util::get( 'clib_status' ), CLIB_Util::STATUSES, '' ),
-	'orderby'           => CLIB_Util::enum( CLIB_Util::get( 'clib_sort' ), array( 'title', 'creator', 'item_code', 'updated_at' ), 'title' ),
-	'order'             => 'updated_at' === CLIB_Util::get( 'clib_sort' ) ? 'desc' : 'asc',
-	'page'              => CLIB_Util::int( CLIB_Util::get( 'clib_page', 1 ), 1, 100000 ),
-	'per_page'          => (int) CLIB_Settings::get( 'per_page' ),
+	'orderby'           => CLIB_Util::enum( CLIB_Util::get( 'clib_sort' ), $clib_sorts, 'title' ),
+	'page'              => CLIB_Util::int( CLIB_Util::get( 'clib_page', 1 ), 1, 10000 ),
+	'per_page'          => $clib_per_page,
+	'search_barcode'    => $clib_staff, // Guests cannot probe for barcodes, which only staff can see.
 );
-list( $clib_rows, $clib_total ) = CLIB_Items::search( $clib_args );
-$clib_pages                     = max( 1, (int) ceil( $clib_total / $clib_args['per_page'] ) );
-$clib_page_id                   = CLIB_Util::int( CLIB_Util::get( 'page_id' ) );
+$clib_args['order'] = 'updated_at' === $clib_args['orderby'] ? 'desc' : 'asc'; // From the whitelisted value, not the raw parameter.
+
+/**
+ * Searches per minute allowed from one guest IP address (or one logged-in
+ * user). Filter to 0 to turn the limit off, for example when every visitor
+ * reaches the site through one proxy address.
+ */
+$clib_limit   = (int) apply_filters( 'clib_catalog_search_rate_limit', 60 );
+$clib_limited = '' !== $clib_args['q'] && CLIB_Util::rate_limited( 'catalog_search', $clib_limit, MINUTE_IN_SECONDS );
+
+$clib_rows  = array();
+$clib_total = 0;
+if ( $clib_limited ) {
+	echo '<div class="clib-notice clib-notice-warning" role="status">' . esc_html__( 'Too many searches in a short time. Please wait a minute and try again.', 'church-library' ) . '</div>';
+} else {
+	// Database errors are never shown to visitors (even with WP_DEBUG_DISPLAY on);
+	// a failure is written to the Audit Log, at most once an hour.
+	global $wpdb;
+	$clib_prev_suppress = $wpdb->suppress_errors( true );
+	$wpdb->last_error   = '';
+	list( $clib_rows, $clib_total ) = CLIB_Items::search( $clib_args );
+	if ( $wpdb->last_error ) {
+		CLIB_Audit::log_error( 'catalog', 'Catalog search query failed: ' . CLIB_Util::cap( $wpdb->last_error, 200 ), 'catalog' );
+		$clib_rows  = array();
+		$clib_total = 0;
+	}
+	$wpdb->suppress_errors( $clib_prev_suppress );
+	$clib_rows  = is_array( $clib_rows ) ? $clib_rows : array();
+	$clib_total = max( 0, (int) $clib_total );
+}
+$clib_pages   = max( 1, (int) ceil( $clib_total / $clib_per_page ) );
+$clib_page_id = CLIB_Util::int( CLIB_Util::get( 'page_id' ), 0, 4294967295 );
+
+/*
+ * Page links are built here from the permalink plus the sanitised values above
+ * only. paginate_links() is not used because it copies every query parameter of
+ * the current request URL into its links (even with add_args => false), which
+ * would reflect unrelated or hostile parameters back into the page.
+ */
+$clib_link_args = array();
+foreach (
+	array(
+		'clib_q'        => $clib_args['q'],
+		'clib_type'     => $clib_args['media_type_id'],
+		'clib_church'   => $clib_args['church_id'],
+		'clib_building' => $clib_args['building_id'],
+		'clib_class'    => $clib_args['classification_id'],
+		'clib_status'   => $clib_args['status'],
+		'clib_sort'     => 'title' === $clib_args['orderby'] ? '' : $clib_args['orderby'],
+	) as $clib_k => $clib_v
+) {
+	if ( '' !== (string) $clib_v && '0' !== (string) $clib_v ) {
+		$clib_link_args[ $clib_k ] = rawurlencode( (string) $clib_v ); // add_query_arg() does not encode values.
+	}
+}
+$clib_current = min( $clib_args['page'], $clib_pages );
+$clib_pager   = '';
+if ( $clib_pages > 1 ) {
+	$clib_page_url = function ( $n ) use ( $clib_link_args, $clib_base ) {
+		$a = $clib_link_args;
+		if ( $n > 1 ) {
+			$a['clib_page'] = (int) $n;
+		}
+		return add_query_arg( $a, $clib_base );
+	};
+	$clib_parts = array();
+	if ( $clib_current > 1 ) {
+		$clib_parts[] = '<a class="prev page-numbers" href="' . esc_url( $clib_page_url( $clib_current - 1 ) ) . '">' . '&laquo; ' . esc_html__( 'Previous', 'church-library' ) . '</a>';
+	}
+	$clib_gap = false;
+	for ( $clib_n = 1; $clib_n <= $clib_pages; $clib_n++ ) {
+		if ( 1 === $clib_n || $clib_pages === $clib_n || abs( $clib_n - $clib_current ) <= 2 ) {
+			if ( $clib_n === $clib_current ) {
+				$clib_parts[] = '<span aria-current="page" class="page-numbers current">' . esc_html( number_format_i18n( $clib_n ) ) . '</span>';
+			} else {
+				$clib_parts[] = '<a class="page-numbers" href="' . esc_url( $clib_page_url( $clib_n ) ) . '">' . esc_html( number_format_i18n( $clib_n ) ) . '</a>';
+			}
+			$clib_gap = false;
+		} elseif ( ! $clib_gap ) {
+			$clib_parts[] = '<span class="page-numbers dots">&hellip;</span>';
+			$clib_gap     = true;
+		}
+	}
+	if ( $clib_current < $clib_pages ) {
+		$clib_parts[] = '<a class="next page-numbers" href="' . esc_url( $clib_page_url( $clib_current + 1 ) ) . '">' . esc_html__( 'Next', 'church-library' ) . ' &raquo;' . '</a>';
+	}
+	$clib_pager = implode( "\n", $clib_parts );
+}
 ?>
 <form class="clib-search" method="get" action="<?php echo esc_url( $clib_base ); ?>" role="search">
 	<?php if ( $clib_page_id ) : ?>
 		<input type="hidden" name="page_id" value="<?php echo esc_attr( $clib_page_id ); ?>">
 	<?php endif; ?>
-	<input type="search" name="clib_q" maxlength="100" value="<?php echo esc_attr( $clib_args['q'] ); ?>" placeholder="<?php esc_attr_e( 'Search title, author, publisher, ISBN, Item ID...', 'church-library' ); ?>" aria-label="<?php esc_attr_e( 'Search', 'church-library' ); ?>">
+	<input type="search" name="clib_q" maxlength="<?php echo (int) CLIB_Util::SEARCH_MAX; ?>" value="<?php echo esc_attr( $clib_args['q'] ); ?>" placeholder="<?php esc_attr_e( 'Search title, author, publisher, ISBN, Item ID...', 'church-library' ); ?>" aria-label="<?php esc_attr_e( 'Search', 'church-library' ); ?>">
 	<select name="clib_type" aria-label="<?php esc_attr_e( 'Media type', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'media_type', $clib_args['media_type_id'], __( 'All media types', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="clib_church" class="clib-church" aria-label="<?php esc_attr_e( 'Church', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'church', $clib_args['church_id'], __( 'All churches', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="clib_building" class="clib-building" aria-label="<?php esc_attr_e( 'Building', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'building', $clib_args['building_id'], __( 'All buildings', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
@@ -157,20 +251,8 @@ $clib_page_id                   = CLIB_Util::int( CLIB_Util::get( 'page_id' ) );
 	?>
 </p>
 
-<?php
-// Page links are shown above and below the list.
-$clib_pager = $clib_pages > 1 ? (string) paginate_links(
-	array(
-		'base'     => add_query_arg( 'clib_page', '%#%' ), // paginate_links() runs esc_url() on output.
-		'format'   => '',
-		'current'  => $clib_args['page'],
-		'total'    => $clib_pages,
-		'add_args' => false,
-	)
-) : '';
-?>
 <?php if ( $clib_pager ) : ?>
-	<nav class="clib-pages clib-pages-top" aria-label="<?php esc_attr_e( 'Pages (top)', 'church-library' ); ?>"><?php echo wp_kses_post( $clib_pager ); ?></nav>
+	<nav class="clib-pages clib-pages-top" aria-label="<?php esc_attr_e( 'Pages (top)', 'church-library' ); ?>"><?php echo $clib_pager; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every part escaped where built above. ?></nav>
 <?php endif; ?>
 
 <?php if ( $clib_rows ) : ?>
@@ -202,5 +284,5 @@ $clib_pager = $clib_pages > 1 ? (string) paginate_links(
 <?php endif; ?>
 
 <?php if ( $clib_pager ) : ?>
-	<nav class="clib-pages clib-pages-bottom" aria-label="<?php esc_attr_e( 'Pages (bottom)', 'church-library' ); ?>"><?php echo wp_kses_post( $clib_pager ); ?></nav>
+	<nav class="clib-pages clib-pages-bottom" aria-label="<?php esc_attr_e( 'Pages (bottom)', 'church-library' ); ?>"><?php echo $clib_pager; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- every part escaped where built above. ?></nav>
 <?php endif; ?>
