@@ -24,7 +24,7 @@ $clib_iid      = (int) $clib_item->id;
 $clib_archived = (int) $clib_item->is_archived;
 $clib_ret      = 'edit' === $clib_return ? 'edit' : 'view';
 ?>
-<div class="clib-item-actions">
+<div class="clib-item-actions" id="clib-item-actions">
 	<h2><?php esc_html_e( 'Archive or delete', 'church-library' ); ?></h2>
 	<?php if ( $clib_can_archive ) : ?>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="clib-action-form">
