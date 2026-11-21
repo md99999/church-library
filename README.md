@@ -169,6 +169,10 @@ assets/                   CSS and JavaScript
 
 ## Changelog
 
+### 1.3.4
+- Archive and Delete are now on the front-end **Edit item** page (Library - Manage Items) too, not only in the dashboard. Archive needs the Manage items permission and Delete needs the Delete items permission; Delete still needs the confirmation box, which the server checks. Each form carries a nonce bound to that item, so a request cannot be redirected to another item.
+- Both Edit item pages have an "Archive or delete this item" link at the top that jumps to the buttons at the bottom.
+
 ### 1.3.3
 - API key fields no longer pick up a browser's saved login password (which could replace or shorten a pasted key). The fields are wider, have a Show button to check a key before saving, and show the saved key's last four characters and length so you can confirm it was stored whole.
 - A key in the wrong format is refused, never shortened: the error names the field and says how many characters were received and what was expected. Spaces, line breaks and invisible characters picked up while copying are removed first.

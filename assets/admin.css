@@ -76,3 +76,4 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 .clib-secret { width: 100%; max-width: 36em; font-family: Consolas, Monaco, monospace; }
 .clib-secret-hint { display: block; }
 .clib-ip-list { margin: 6px 0 6px 1.5em; list-style: disc; }
+.clib-jump { margin: 4px 0 12px; }
