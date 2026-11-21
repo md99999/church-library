@@ -53,7 +53,7 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 .clib-bulk-confirm { max-width: 760px; padding: 8px 16px; }
 
 @media print {
-	#adminmenumain, #wpadminbar, .nav-tab-wrapper, .clib-filters, .clib-export, .notice, #wpfooter { display: none !important; }
+	#adminmenumain, #wpadminbar, .nav-tab-wrapper, .clib-filters, .clib-export, .notice, #wpfooter, .clib-source-credit { display: none !important; }
 	#wpcontent { margin-left: 0 !important; }
 }
 
@@ -72,6 +72,8 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 
 .clib-credit { font-size: 11px; color: #646970; margin: 6px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .clib-footer-credit { display: block; margin-top: 24px; padding-top: 8px; border-top: 1px solid #dcdcde; }
+.clib-footer-credit .clib-credit { margin: 0 0 2px; }
+.clib-footer-credit a { color: inherit; }
 .clib-secret-row { display: block; margin: 8px 0; }
 .clib-secret { width: 100%; max-width: 36em; font-family: Consolas, Monaco, monospace; }
 .clib-secret-hint { display: block; }

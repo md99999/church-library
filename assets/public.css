@@ -69,7 +69,7 @@
 .clib .clib-howto h2 { scroll-margin-top: 80px; }
 
 @media print {
-	.clib .clib-nav, .clib .clib-tabs, .clib .clib-report-actions, .clib .clib-search { display: none !important; }
+	.clib .clib-nav, .clib .clib-tabs, .clib .clib-report-actions, .clib .clib-search, .clib .clib-source-credit { display: none !important; }
 }
 
 /* Form controls: keep a fixed size on focus whatever the theme does
@@ -97,6 +97,8 @@
 
 .clib-credit { font-size: 11px; color: #646970; margin: 6px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .clib-footer-credit { display: block; margin-top: 24px; padding-top: 8px; border-top: 1px solid #dcdcde; }
+.clib-footer-credit .clib-credit { margin: 0 0 2px; }
+.clib-footer-credit a { color: inherit; }
 .clib .clib-item-actions { margin-top: 32px; padding-top: 16px; border-top: 1px solid #dcdcde; max-width: 760px; }
 .clib .clib-item-actions .clib-action-form { margin: 12px 0; }
 .clib .clib-btn-danger { background: #b32d2e; border-color: #b32d2e; color: #fff; }
