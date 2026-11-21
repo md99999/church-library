@@ -30,6 +30,9 @@ $clib_f = function ( $k, $default = '' ) use ( $clib_v ) {
 $clib_title = $clib_item ? __( 'Library - Edit Item', 'church-library' ) : __( 'Library - Add Item', 'church-library' );
 ?>
 <h1><?php echo esc_html( $clib_title ); ?><?php echo $clib_item ? ' <code>' . esc_html( $clib_item->item_code ) . '</code>' : ''; ?></h1>
+<?php if ( $clib_item && ( current_user_can( 'clib_manage_items' ) || current_user_can( 'clib_delete_items' ) ) ) : ?>
+	<p class="clib-jump"><a href="#clib-item-actions"><?php esc_html_e( 'Archive or delete this item', 'church-library' ); ?> &darr;</a></p>
+<?php endif; ?>
 <?php if ( $clib_item && (int) $clib_item->is_archived ) : ?>
 	<div class="notice notice-warning inline"><p><?php esc_html_e( 'This item is archived and hidden from the catalog. Use "Restore to catalog" below to bring it back.', 'church-library' ); ?></p></div>
 <?php endif; ?>

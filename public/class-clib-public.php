@@ -18,10 +18,12 @@ class CLIB_Public {
 
 	/** Front-end POST actions: action => required capability. */
 	const ACTIONS = array(
-		'checkout'  => 'clib_circulate',
-		'checkin'   => 'clib_circulate',
-		'save_item' => 'clib_manage_items',
-		'export'    => 'clib_reports',
+		'checkout'     => 'clib_circulate',
+		'checkin'      => 'clib_circulate',
+		'save_item'    => 'clib_manage_items',
+		'archive_item' => 'clib_manage_items',
+		'delete_item'  => 'clib_delete_items',
+		'export'       => 'clib_reports',
 	);
 
 	public static function init() {
@@ -252,6 +254,46 @@ class CLIB_Public {
 			self::go( 'manage' );
 		}
 		self::go( 'catalog', array( 'clib_item' => CLIB_Items::get( $res['id'] )->item_code ) );
+	}
+
+	/**
+	 * Item id for an archive/delete request, after checking the second nonce
+	 * that is bound to that id (the per-action nonce was checked in handle()).
+	 */
+	private static function item_action_id( $action ) {
+		$id    = CLIB_Util::int( CLIB_Util::post( 'id' ) );
+		$nonce = CLIB_Util::post( '_clib_item_nonce' );
+		if ( ! $id || ! is_string( $nonce ) || ! wp_verify_nonce( $nonce, 'clib_front_' . $action . '_' . $id ) ) {
+			wp_die( esc_html__( 'This form has expired. Please go back, reload the page and try again.', 'church-library' ), 403 );
+		}
+		return $id;
+	}
+
+	private static function do_archive_item() {
+		$id  = self::item_action_id( 'archive_item' );
+		$res = CLIB_Items::archive( $id );
+		if ( is_wp_error( $res ) ) {
+			CLIB_Form::notice_error( $res );
+			self::go( 'manage', array( 'id' => $id ) );
+		}
+		CLIB_Form::notice( __( 'Item archived. It is hidden from the catalog; an administrator can restore it from Library > Catalog > Archived items in the dashboard.', 'church-library' ) );
+		self::go( 'catalog' );
+	}
+
+	private static function do_delete_item() {
+		$id = self::item_action_id( 'delete_item' );
+		// The confirmation box is checked here, not only in the browser.
+		if ( '1' !== CLIB_Util::post( 'confirm_delete' ) ) {
+			CLIB_Form::notice( __( 'Nothing was deleted: tick the box to confirm a permanent delete.', 'church-library' ), 'error' );
+			self::go( 'manage', array( 'id' => $id ) );
+		}
+		$res = CLIB_Items::delete( $id );
+		if ( is_wp_error( $res ) ) {
+			CLIB_Form::notice_error( $res );
+			self::go( 'manage', array( 'id' => $id ) );
+		}
+		CLIB_Form::notice( __( 'Item deleted.', 'church-library' ) );
+		self::go( 'catalog' );
 	}
 
 	private static function do_export() {
