@@ -127,6 +127,7 @@ class CLIB_Lookup {
 		$rl_key = 'clib_lk_rate_' . get_current_user_id();
 		$hits   = (int) get_transient( $rl_key );
 		if ( $hits >= 30 ) {
+			CLIB_Audit::log_error( 'lookup', 'Lookup rate limit reached (30 lookups in 5 minutes) for this user.' );
 			wp_send_json_error( array( 'message' => __( 'Too many lookups. Please wait a few minutes.', 'church-library' ) ), 429 );
 		}
 		set_transient( $rl_key, $hits + 1, 5 * MINUTE_IN_SECONDS );
@@ -212,14 +213,21 @@ class CLIB_Lookup {
 			$cache_key = 'clib_lk_' . md5( $pid . '|' . $type . '|' . strtolower( $query ) );
 			$results   = get_transient( $cache_key );
 			if ( ! is_array( $results ) ) {
-				self::$last_status = 200;
+				self::$last_status  = 200;
+				self::$last_problem = '';
 				try {
 					$results = $provider->search( $type, $query );
 				} catch ( Throwable $e ) {
 					$results = array(); // A broken third-party provider must not break the lookup.
+					// Exception class only: messages can carry URLs or data from the remote side.
+					CLIB_Audit::log_error( $pid, sprintf( 'Lookup source failed with %s.', get_class( $e ) ) );
 				}
 				if ( ! $results && 200 !== self::$last_status ) {
-					$problems[] = self::problem_text( $provider->label(), self::$last_status );
+					// A provider may explain the failure itself (already plain text, escaped on output).
+					$problem    = '' !== self::$last_problem ? sanitize_text_field( self::$last_problem ) : self::problem_text( $provider->label(), self::$last_status );
+					$problems[] = $problem;
+					/* translators: 1: plain-language problem, 2: HTTP status (0 = no answer) */
+					CLIB_Audit::log_error( $pid, sprintf( __( '%1$s (HTTP status %2$d)', 'church-library' ), $problem, self::$last_status ) );
 				}
 				$results = is_array( $results ) ? array_slice( $results, 0, 10 ) : array();
 				set_transient( $cache_key, $results, $results ? 12 * HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS ); // Short cache for empty answers (may be a busy service).
@@ -304,10 +312,14 @@ class CLIB_Lookup {
 		}
 		$parts = wp_parse_url( $url );
 		if ( empty( $parts['scheme'] ) || 'https' !== $parts['scheme'] || empty( $parts['host'] ) || ! in_array( strtolower( $parts['host'] ), array_map( 'strtolower', $provider->allowed_hosts() ), true ) ) {
+			CLIB_Audit::log_error( $provider_id, 'Cover URL refused: host not on the allow-list.', 'cover' );
 			return new WP_Error( 'clib_cover', __( 'Cover host not allowed.', 'church-library' ) );
 		}
 		$id = CLIB_Items::sideload_image( $url, 'cover-' . sanitize_file_name( $provider_id ) . '.jpg', $title );
-		if ( ! is_wp_error( $id ) ) {
+		if ( is_wp_error( $id ) ) {
+			/* translators: %s: error message */
+			CLIB_Audit::log_error( $provider_id, sprintf( __( 'Cover image could not be imported: %s', 'church-library' ), $id->get_error_message() ), 'cover' );
+		} else {
 			CLIB_Attribution::record_cover( $id, $provider_id ); // For the image credit.
 		}
 		return $id;
@@ -315,6 +327,12 @@ class CLIB_Lookup {
 
 	/** HTTP status of the last provider request (0 = no answer), so failures can be reported. */
 	public static $last_status = 200;
+
+	/** Body of the last refused request (4xx only, at most 4 KB), for providers that explain errors. */
+	public static $last_error_body = '';
+
+	/** Plain-language reason set by a provider for its last failure ('' = use the generic text). */
+	public static $last_problem = '';
 
 	/** Shared HTTP helper for providers: https only, small, short timeout. Returns the body or null. */
 	public static function http_body( $url, array $headers = array(), $accept = 'application/json' ) {
@@ -332,11 +350,50 @@ class CLIB_Lookup {
 				'headers'             => array_merge( array( 'Accept' => $accept ), $headers ),
 			)
 		);
-		self::$last_status = is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );
+		self::$last_status     = is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );
+		self::$last_error_body = self::$last_status >= 400 && self::$last_status < 500 ? substr( (string) wp_remote_retrieve_body( $res ), 0, 4096 ) : '';
 		if ( 200 !== self::$last_status ) {
 			return null;
 		}
 		return (string) wp_remote_retrieve_body( $res );
+	}
+
+	/**
+	 * This server's outbound IP addresses, as seen from outside, for adding to an
+	 * API key's IP restriction. Asks ipify.org (no key, no data sent but the
+	 * request itself). Only well-formed public addresses are returned.
+	 *
+	 * @return array [ 'ipv4' => string, 'ipv6' => string ] ('' when unknown).
+	 */
+	public static function outbound_ips() {
+		$out = array(
+			'ipv4' => '',
+			'ipv6' => '',
+		);
+		$services = array(
+			'ipv4' => array( 'https://api.ipify.org/?format=json', FILTER_FLAG_IPV4 ),
+			'ipv6' => array( 'https://api6.ipify.org/?format=json', FILTER_FLAG_IPV6 ),
+		);
+		foreach ( $services as $family => $svc ) {
+			$res = wp_safe_remote_get(
+				$svc[0],
+				array(
+					'timeout'             => 6,
+					'redirection'         => 0,
+					'limit_response_size' => 1024,
+					'user-agent'          => 'ChurchLibrary/' . CLIB_VERSION,
+				)
+			);
+			if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+				continue; // No IPv6 route is normal on many hosts.
+			}
+			$data = json_decode( (string) wp_remote_retrieve_body( $res ), true, 4 );
+			$ip   = is_array( $data ) && isset( $data['ip'] ) && is_string( $data['ip'] ) ? trim( $data['ip'] ) : '';
+			if ( '' !== $ip && false !== filter_var( $ip, FILTER_VALIDATE_IP, $svc[1] | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+				$out[ $family ] = $ip;
+			}
+		}
+		return $out;
 	}
 
 	/** JSON variant of http_body(). */

@@ -34,6 +34,28 @@ class CLIB_Audit {
 		);
 	}
 
+	/**
+	 * Record an error (a lookup source refusing, a cover that would not import...).
+	 * The same error is logged at most once an hour so a failing source cannot
+	 * flood the log. Callers pass plain text only: never keys, tokens or raw
+	 * response bodies.
+	 *
+	 * @param string $source  Short id of what failed, e.g. 'googlebooks'.
+	 * @param string $message Plain-language description.
+	 * @return bool True when written, false when throttled.
+	 */
+	public static function log_error( $source, $message, $object_type = 'lookup', $object_id = 0 ) {
+		$source  = substr( sanitize_key( $source ), 0, 40 );
+		$message = sanitize_text_field( (string) $message );
+		$key     = 'clib_err_' . md5( $source . '|' . $message );
+		if ( get_transient( $key ) ) {
+			return false;
+		}
+		set_transient( $key, 1, HOUR_IN_SECONDS );
+		self::log( 'error', $object_type, $object_id, ( '' !== $source ? $source . ': ' : '' ) . $message );
+		return true;
+	}
+
 	public static function page( $page, $per_page ) {
 		global $wpdb;
 		$t      = CLIB_DB::table( 'audit' );

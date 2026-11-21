@@ -58,6 +58,48 @@ class CLIB_Lookup_GoogleBooks implements CLIB_Lookup_Provider {
 		return 'https://books.google.com/books/content?id=' . rawurlencode( $cover_ref ) . '&printsec=frontcover&img=1&zoom=1';
 	}
 
+	/**
+	 * Plain-language reason for a Google key refusal, from Google's error body.
+	 * Only fixed sentences come out; the one value taken from the body (the IP
+	 * address Google saw) must pass FILTER_VALIDATE_IP. '' = use the generic text.
+	 */
+	public static function explain_refusal( $body ) {
+		$err = json_decode( (string) $body, true, 16 );
+		$err = is_array( $err ) && isset( $err['error'] ) && is_array( $err['error'] ) ? $err['error'] : array();
+		$msg = isset( $err['message'] ) && is_string( $err['message'] ) ? $err['message'] : '';
+		$why = array();
+		foreach ( isset( $err['details'] ) && is_array( $err['details'] ) ? $err['details'] : array() as $d ) {
+			if ( is_array( $d ) && isset( $d['reason'] ) && is_string( $d['reason'] ) ) {
+				$why[] = $d['reason'];
+			}
+		}
+		foreach ( isset( $err['errors'] ) && is_array( $err['errors'] ) ? $err['errors'] : array() as $d ) {
+			if ( is_array( $d ) && isset( $d['reason'] ) && is_string( $d['reason'] ) ) {
+				$why[] = $d['reason'];
+			}
+		}
+		if ( in_array( 'API_KEY_IP_ADDRESS_BLOCKED', $why, true ) || false !== stripos( $msg, 'IP address restriction' ) || false !== stripos( $msg, 'client IP address' ) ) {
+			$ip = '';
+			if ( preg_match( '/IP address of the call \(([0-9A-Fa-f:.]{2,45})\)/', $msg, $m ) && false !== filter_var( $m[1], FILTER_VALIDATE_IP ) ) {
+				$ip = $m[1];
+			}
+			return '' !== $ip
+				/* translators: %s: IP address */
+				? sprintf( __( 'Google Books refused the API key because of its IP address restriction: Google saw this server as %s. Add that address to the key in Google Cloud (Credentials), or use "Show this server\'s IP address" in Library - Settings.', 'church-library' ), $ip )
+				: __( 'Google Books refused the API key because of its IP address restriction. Add this server\'s outbound IP address to the key in Google Cloud (Credentials); "Show this server\'s IP address" in Library - Settings finds it.', 'church-library' );
+		}
+		if ( in_array( 'API_KEY_HTTP_REFERRER_BLOCKED', $why, true ) || false !== stripos( $msg, 'referer' ) || false !== stripos( $msg, 'referrer' ) ) {
+			return __( 'Google Books refused the API key because it is restricted to websites (HTTP referrers). Lookups run on the server, so set the key\'s application restriction to IP addresses (or none) in Google Cloud.', 'church-library' );
+		}
+		if ( in_array( 'API_KEY_SERVICE_BLOCKED', $why, true ) || in_array( 'SERVICE_DISABLED', $why, true ) || in_array( 'accessNotConfigured', $why, true ) ) {
+			return __( 'Google Books refused the API key: the Books API is not enabled for it. Enable the Books API in the key\'s Google Cloud project and allow it in the key\'s API restrictions.', 'church-library' );
+		}
+		if ( in_array( 'API_KEY_INVALID', $why, true ) || in_array( 'keyInvalid', $why, true ) || false !== stripos( $msg, 'API key not valid' ) ) {
+			return __( 'Google Books says the API key is not valid. Check it in Google Cloud and enter it again in Library - Settings.', 'church-library' );
+		}
+		return '';
+	}
+
 	public function search( $type, $query ) {
 		if ( 'isbn' === $type ) {
 			if ( ! in_array( strlen( $query ), array( 10, 13 ), true ) ) {
@@ -85,6 +127,9 @@ class CLIB_Lookup_GoogleBooks implements CLIB_Lookup_Provider {
 		$headers = '' !== $key ? array( 'X-goog-api-key' => $key ) : array();
 		$data    = CLIB_Lookup::http_json( $url, $headers );
 		$out     = array();
+		if ( null === $data && in_array( CLIB_Lookup::$last_status, array( 400, 403 ), true ) ) {
+			CLIB_Lookup::$last_problem = self::explain_refusal( CLIB_Lookup::$last_error_body );
+		}
 		if ( empty( $data['items'] ) || ! is_array( $data['items'] ) ) {
 			return $out;
 		}

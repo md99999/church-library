@@ -120,6 +120,29 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 					$clib_secret = array( 'field' => 'google_books_key', 'label' => __( 'Google Books API key (optional)', 'church-library' ), 'clear' => 'google_books_key_clear' );
 					include CLIB_DIR . 'admin/views/partials/secret-field.php';
 					?>
+					<div id="clib-server-ip" class="clib-server-ip">
+						<p class="description"><?php esc_html_e( 'If you restrict the Google key to IP addresses, use this server\'s outgoing address (on shared hosting it is often not the address your site name points to).', 'church-library' ); ?></p>
+						<?php // Submits the separate form below the settings form (forms cannot be nested). ?>
+						<button type="submit" form="clib-outbound-ip-form" class="button"><?php esc_html_e( 'Show this server\'s IP address', 'church-library' ); ?></button>
+						<?php
+						$clib_ips = get_transient( 'clib_outbound_ip_' . get_current_user_id() );
+						if ( is_array( $clib_ips ) && ( ! empty( $clib_ips['ipv4'] ) || ! empty( $clib_ips['ipv6'] ) ) ) :
+							?>
+							<ul class="clib-ip-list">
+								<?php foreach ( array( 'ipv4' => __( 'IPv4', 'church-library' ), 'ipv6' => __( 'IPv6', 'church-library' ) ) as $clib_fam => $clib_fam_label ) : ?>
+									<li><?php echo esc_html( $clib_fam_label ); ?>:
+										<?php if ( ! empty( $clib_ips[ $clib_fam ] ) && false !== filter_var( $clib_ips[ $clib_fam ], FILTER_VALIDATE_IP ) ) : ?>
+											<code class="clib-ip"><?php echo esc_html( $clib_ips[ $clib_fam ] ); ?></code>
+										<?php else : ?>
+											<?php esc_html_e( 'none (this server does not use it for outgoing requests)', 'church-library' ); ?>
+										<?php endif; ?>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+							<p class="description"><?php esc_html_e( 'Add each address shown to the key in Google Cloud: APIs & Services > Credentials > your key > Application restrictions > IP addresses. Changes can take a few minutes to apply.', 'church-library' ); ?></p>
+						<?php endif; ?>
+						<p class="description"><?php esc_html_e( 'The button asks ipify.org which address requests from this server come from. Nothing else is sent.', 'church-library' ); ?></p>
+					</div>
 					<p class="description"><?php esc_html_e( 'IMDb is not offered: it has no free official API, and reading its web pages automatically is against its terms.', 'church-library' ); ?></p>
 				</fieldset>
 			</td>
@@ -180,6 +203,11 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 	</table>
 
 	<?php submit_button( __( 'Save Settings', 'church-library' ) ); ?>
+</form>
+
+<form id="clib-outbound-ip-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+	<?php wp_nonce_field( 'clib_outbound_ip' ); ?>
+	<input type="hidden" name="action" value="clib_outbound_ip">
 </form>
 
 <h2 id="clib-prefixes"><?php esc_html_e( 'Item ID prefixes', 'church-library' ); ?></h2>
