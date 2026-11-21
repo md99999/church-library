@@ -93,6 +93,7 @@ class CLIB_Admin {
 				'lookupNonce'   => wp_create_nonce( 'clib_lookup' ),
 				'lookupEnabled' => (bool) CLIB_Settings::get( 'lookup_enabled' ),
 				'i18n'          => array(
+					'hide'          => __( 'Hide', 'church-library' ),
 					'confirmDelete' => __( 'Delete this permanently? This cannot be undone.', 'church-library' ),
 					'confirmMerge'  => __( 'Merge these records? The other records will be deleted and their copies added to the one you keep. This cannot be undone.', 'church-library' ),
 					'confirmFix'    => __( 'Give the ticked items new Item IDs? Labels printed with the old IDs will need to be reprinted.', 'church-library' ),

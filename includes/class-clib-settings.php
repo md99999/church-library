@@ -85,31 +85,91 @@ class CLIB_Settings {
 		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9]{10,64}$/', $v );
 	}
 
-	/** Google API key: "AIza" style keys are 39 characters of letters, digits, - and _. */
+	public static function valid_discogs_token( $v ) {
+		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9]{20,64}$/', $v );
+	}
+
+	/** Google API key: "AIza" followed by 35 letters, digits, - or _ (39 characters in all). */
 	public static function valid_google_key( $v ) {
-		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9_-]{30,64}$/', $v );
+		return is_string( $v ) && 1 === preg_match( '/^AIza[A-Za-z0-9_-]{35}$/', $v );
+	}
+
+	/**
+	 * What each secret field expects, for the error shown when a value is refused.
+	 * field => [ label, expected format ].
+	 */
+	private static function secret_fields() {
+		return array(
+			'discogs_token'    => array( __( 'Discogs personal access token', 'church-library' ), __( '20 to 64 letters and digits', 'church-library' ) ),
+			'discogs_key'      => array( __( 'Discogs consumer key', 'church-library' ), __( '10 to 64 letters and digits', 'church-library' ) ),
+			'discogs_secret'   => array( __( 'Discogs consumer secret', 'church-library' ), __( '10 to 64 letters and digits', 'church-library' ) ),
+			'google_books_key' => array( __( 'Google Books API key', 'church-library' ), __( '39 characters starting with AIza', 'church-library' ) ),
+		);
+	}
+
+	/**
+	 * Clean a pasted credential: credentials never contain spaces, line breaks or
+	 * invisible characters, so those (often picked up when copying) are removed.
+	 * Nothing else is changed: a value that is still wrong is refused, never cut.
+	 */
+	private static function clean_secret( $v ) {
+		if ( ! is_string( $v ) ) {
+			return '';
+		}
+		$v = wp_unslash( $v );
+		if ( strlen( $v ) > 1024 ) {
+			return $v; // Far too long to be a key: refused by the validator as-is.
+		}
+		$clean = preg_replace( '/[\s\x{00AD}\x{200B}-\x{200D}\x{2060}\x{FEFF}]+/u', '', $v );
+		return null === $clean ? $v : $clean; // Invalid UTF-8: leave it for the validator to refuse.
 	}
 
 	/**
 	 * Secret field rules shared by every API credential: blank keeps the saved
 	 * value, the "clear" box removes it, anything else must pass $valid or it is
-	 * rejected (and reported) while the old value is kept. Secrets are never
-	 * echoed back to the settings page.
+	 * refused (and reported with the length received) while the old value is
+	 * kept. Values are never truncated, and never echoed back to the page.
 	 */
-	private static function secret( array $raw, array &$out, $field, $clear, $valid, $label ) {
+	private static function secret( array $raw, array &$out, $field, $clear, $valid ) {
 		if ( ! empty( $raw[ $clear ] ) ) {
 			$out[ $field ] = '';
 			return;
 		}
-		$v = isset( $raw[ $field ] ) && is_string( $raw[ $field ] ) ? trim( wp_unslash( $raw[ $field ] ) ) : '';
+		$v = isset( $raw[ $field ] ) ? self::clean_secret( $raw[ $field ] ) : '';
 		if ( '' === $v ) {
 			return;
 		}
 		if ( call_user_func( $valid, $v ) ) {
 			$out[ $field ] = $v;
-		} else {
-			self::$rejected[] = $label;
+			return;
 		}
+		$f    = self::secret_fields();
+		$info = isset( $f[ $field ] ) ? $f[ $field ] : array( $field, '' );
+		/* translators: 1: setting name, 2: number of characters received, 3: expected format */
+		self::$rejected[] = sprintf( __( '%1$s (received %2$d characters; expected %3$s)', 'church-library' ), $info[0], strlen( $v ), $info[1] );
+	}
+
+	/**
+	 * Hint about a saved credential so an admin can check it was stored whole:
+	 * its length and last four characters. Empty when nothing is saved.
+	 */
+	public static function secret_hint( $field ) {
+		$v = (string) self::get( $field );
+		if ( '' === $v ) {
+			return '';
+		}
+		$valid = array(
+			'discogs_token'    => 'valid_discogs_token',
+			'discogs_key'      => 'valid_discogs_credential',
+			'discogs_secret'   => 'valid_discogs_credential',
+			'google_books_key' => 'valid_google_key',
+		);
+		/* translators: 1: last four characters of the saved key, 2: its length */
+		$hint = sprintf( __( 'Saved: ends in %1$s, %2$d characters.', 'church-library' ), substr( $v, -4 ), strlen( $v ) );
+		if ( isset( $valid[ $field ] ) && ! call_user_func( array( __CLASS__, $valid[ $field ] ), $v ) ) {
+			$hint .= ' ' . __( 'This saved value is not a valid key and is not used. Enter the key again.', 'church-library' );
+		}
+		return $hint;
 	}
 
 	/** Sanitize a raw settings array (from POST). Unknown keys are dropped. */
@@ -129,41 +189,17 @@ class CLIB_Settings {
 		$posted                  = isset( $raw['lookup_providers'] ) && is_array( $raw['lookup_providers'] ) ? array_map( 'sanitize_key', $raw['lookup_providers'] ) : array();
 		$out['lookup_providers'] = array_values( array_intersect( $known, $posted ) );
 
-		// Token: blank keeps the saved one; "clear" box removes it; otherwise it must look like a Discogs token.
-		$token = isset( $raw['discogs_token'] ) && is_string( $raw['discogs_token'] ) ? trim( wp_unslash( $raw['discogs_token'] ) ) : '';
+		// API credentials: blank keeps the saved value, a "clear" box removes it, anything else must be valid.
 		self::$rejected = array();
-		if ( ! empty( $raw['discogs_token_clear'] ) ) {
-			$out['discogs_token'] = '';
-		} elseif ( '' !== $token ) {
-			if ( preg_match( '/^[A-Za-z0-9]{20,64}$/', $token ) ) {
-				$out['discogs_token'] = $token;
-			} else {
-				self::$rejected[] = __( 'Discogs personal access token', 'church-library' );
-			}
-		}
-
-		// Consumer key + secret: same rules (blank keeps, clear box removes, must be letters/digits).
+		self::secret( $raw, $out, 'discogs_token', 'discogs_token_clear', array( __CLASS__, 'valid_discogs_token' ) );
 		if ( ! empty( $raw['discogs_app_clear'] ) ) {
 			$out['discogs_key']    = '';
 			$out['discogs_secret'] = '';
 		} else {
-			foreach ( array(
-				'discogs_key'    => __( 'Discogs consumer key', 'church-library' ),
-				'discogs_secret' => __( 'Discogs consumer secret', 'church-library' ),
-			) as $field => $label ) {
-				$v = isset( $raw[ $field ] ) && is_string( $raw[ $field ] ) ? trim( wp_unslash( $raw[ $field ] ) ) : '';
-				if ( '' === $v ) {
-					continue;
-				}
-				if ( self::valid_discogs_credential( $v ) ) {
-					$out[ $field ] = $v;
-				} else {
-					self::$rejected[] = $label;
-				}
-			}
+			self::secret( $raw, $out, 'discogs_key', 'discogs_key_clear', array( __CLASS__, 'valid_discogs_credential' ) );
+			self::secret( $raw, $out, 'discogs_secret', 'discogs_secret_clear', array( __CLASS__, 'valid_discogs_credential' ) );
 		}
-
-		self::secret( $raw, $out, 'google_books_key', 'google_books_key_clear', array( __CLASS__, 'valid_google_key' ), __( 'Google Books API key', 'church-library' ) );
+		self::secret( $raw, $out, 'google_books_key', 'google_books_key_clear', array( __CLASS__, 'valid_google_key' ) );
 		return $out;
 	}
 

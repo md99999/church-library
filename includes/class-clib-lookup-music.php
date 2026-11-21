@@ -152,7 +152,7 @@ class CLIB_Lookup_Discogs implements CLIB_Lookup_Provider {
 
 	private function token() {
 		$t = (string) CLIB_Settings::get( 'discogs_token' );
-		return preg_match( '/^[A-Za-z0-9]{20,64}$/', $t ) ? $t : '';
+		return CLIB_Settings::valid_discogs_token( $t ) ? $t : '';
 	}
 
 	/** Consumer key + secret of a registered Discogs app (alternative to a token). */

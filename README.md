@@ -169,6 +169,11 @@ assets/                   CSS and JavaScript
 
 ## Changelog
 
+### 1.3.3
+- API key fields no longer pick up a browser's saved login password (which could replace or shorten a pasted key). The fields are wider, have a Show button to check a key before saving, and show the saved key's last four characters and length so you can confirm it was stored whole.
+- A key in the wrong format is refused, never shortened: the error names the field and says how many characters were received and what was expected. Spaces, line breaks and invisible characters picked up while copying are removed first.
+- Google Books keys are checked strictly (39 characters starting with AIza). A saved key that does not match is flagged on the settings page.
+
 ### 1.3.2
 - Removed the TMDB movie lookup source (its licence for this use is paid). Its settings and any saved TMDB key are deleted on update. Sites that had TMDB switched on get Wikidata instead.
 - New free movie source: Wikidata (CC0 data, no key). Searches films, TV films, series and other screen works and fills title, year, director and description, with a link to the Wikidata entry.

@@ -72,3 +72,6 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 
 .clib-credit { font-size: 11px; color: #646970; margin: 6px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .clib-footer-credit { display: block; margin-top: 24px; padding-top: 8px; border-top: 1px solid #dcdcde; }
+.clib-secret-row { display: block; margin: 8px 0; }
+.clib-secret { width: 100%; max-width: 36em; font-family: Consolas, Monaco, monospace; }
+.clib-secret-hint { display: block; }
