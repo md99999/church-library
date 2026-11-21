@@ -37,8 +37,8 @@ class CLIB_Reports {
 	/** Inventory checklist sort orders: key => label. The SQL lives in checklist_order(). */
 	public static function checklist_sorts() {
 		return array(
-			'location'  => __( 'Location (building, room, call #)', 'church-library' ),
-			'call'      => __( 'Call #', 'church-library' ),
+			'location'  => __( 'Location (building, room, cat #)', 'church-library' ),
+			'call'      => __( 'Cat #', 'church-library' ),
 			'title'     => __( 'Title', 'church-library' ),
 			'item_code' => __( 'Item ID', 'church-library' ),
 		);
@@ -60,7 +60,7 @@ class CLIB_Reports {
 			'church'         => array( __( 'Church Name', 'church-library' ), 'ch.id IS NULL' ),
 			'building'       => array( __( 'Building', 'church-library' ), 'bl.id IS NULL' ),
 			'room'           => array( __( 'Room', 'church-library' ), "TRIM(i.room) = ''" ),
-			'call_number'    => array( __( 'Call #', 'church-library' ), "TRIM(i.call_number) = ''" ),
+			'call_number'    => array( __( 'Cat #', 'church-library' ), "TRIM(i.call_number) = ''" ),
 			'barcode'        => array( __( 'Barcode', 'church-library' ), "TRIM(i.barcode) = ''" ),
 			'condition'      => array( __( 'Condition', 'church-library' ), "i.item_condition = ''" ),
 		);
@@ -309,7 +309,7 @@ class CLIB_Reports {
 				'building'  => __( 'Building', 'church-library' ),
 				'room'      => __( 'Room', 'church-library' ),
 				'location'  => __( 'Location ID', 'church-library' ),
-				'call'      => __( 'Call #', 'church-library' ),
+				'call'      => __( 'Cat #', 'church-library' ),
 				'copies'    => __( 'Copies', 'church-library' ),
 				'status'    => __( 'Status', 'church-library' ),
 				'condition' => __( 'Condition', 'church-library' ),
@@ -435,7 +435,7 @@ class CLIB_Reports {
 			'title'     => __( 'Title', 'church-library' ),
 			'creator'   => __( 'Creator/Author', 'church-library' ),
 			'media'     => __( 'Media Type', 'church-library' ),
-			'call'      => __( 'Call #', 'church-library' ),
+			'call'      => __( 'Cat #', 'church-library' ),
 			'building'  => __( 'Building', 'church-library' ),
 			'room'      => __( 'Room', 'church-library' ),
 			'copies'    => __( 'Copies', 'church-library' ),

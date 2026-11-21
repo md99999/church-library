@@ -91,7 +91,7 @@ if ( is_array( $clib_result ) ) {
 <?php endif; ?>
 
 <p><?php esc_html_e( 'Import items from a CSV file. In Excel, open your sheet and use File > Save As > "CSV UTF-8". The first row must be column headings.', 'church-library' ); ?></p>
-<p><?php esc_html_e( 'Recognised headings include: Item ID, Title (required), Author\'s Name / Author / Creator, Publisher, Description, Notes, Barcode, Call #, Classification, Cost, ISBN / Identifier, Media Type, Music Sub-category, Difficulty Level, Church, Building, Room, Location ID, Copies, Condition, Storage Status, Owned By, Liturgical Use, Acquired Date, Inventory Notes. Other columns are ignored.', 'church-library' ); ?></p>
+<p><?php esc_html_e( 'Recognised headings include: Item ID, Title (required), Author\'s Name / Author / Creator, Publisher, Description, Notes, Barcode, Cat # (or Call #), Classification, Cost, ISBN / Identifier, Media Type, Music Sub-category, Difficulty Level, Church, Building, Room, Location ID, Copies, Condition, Storage Status, Owned By, Liturgical Use, Acquired Date, Inventory Notes. Other columns are ignored.', 'church-library' ); ?></p>
 
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data" class="clib-section">
 	<?php wp_nonce_field( 'clib_import' ); ?>

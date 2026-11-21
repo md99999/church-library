@@ -122,7 +122,7 @@ $clib_days = (int) CLIB_Settings::get( 'loan_days' );
 	<?php
 	$clib_p(
 		/* translators: %s: link to reports page */
-		sprintf( __( '%s shows a summary of the collection, what is checked out, what is overdue, the loan history for a date range, a shelf list sorted by location, a printable Inventory Checklist with a Found box to tick for each item, and a Missing Data Audit of items without an image, author, call number, barcode or other details. Every report can be downloaded for Excel or printed.', 'church-library' ), $clib_link( 'reports' ) )
+		sprintf( __( '%s shows a summary of the collection, what is checked out, what is overdue, the loan history for a date range, a shelf list sorted by location, a printable Inventory Checklist with a Found box to tick for each item, and a Missing Data Audit of items without an image, author, cat #, barcode or other details. Every report can be downloaded for Excel or printed.', 'church-library' ), $clib_link( 'reports' ) )
 	);
 	?>
 

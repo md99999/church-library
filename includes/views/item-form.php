@@ -131,7 +131,7 @@ $clib_lov_link = function ( $list ) {
 				<input type="text" id="clib-loc" name="location_code" maxlength="64" placeholder="<?php esc_attr_e( 'e.g. A-12-3 (aisle-shelf-bin)', 'church-library' ); ?>" value="<?php echo esc_attr( $clib_f( 'location_code' ) ); ?>">
 			</p>
 			<p class="clib-field">
-				<label for="clib-call"><?php esc_html_e( 'Call #', 'church-library' ); ?></label>
+				<label for="clib-call"><?php esc_html_e( 'Cat #', 'church-library' ); ?></label>
 				<input type="text" id="clib-call" name="call_number" maxlength="64" value="<?php echo esc_attr( $clib_f( 'call_number' ) ); ?>">
 			</p>
 			<p class="clib-field">
