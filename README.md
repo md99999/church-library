@@ -8,6 +8,8 @@ A WordPress plugin for running a library shared by several churches: a catalog o
 
 Every effort has been made to write it safely (see *Security* below), but new vulnerabilities are discovered in software of every kind every day, and no website can be guaranteed secure. The plugin is provided as is, without warranty of any kind, under the GNU General Public License v3 or later. Test on a staging site first, keep backups of your database and files, keep WordPress, PHP, your theme and plugins up to date, and serve the site over HTTPS.
 
+**Found a security problem?** Please report it privately by email to **sysop@maddogproductions.online**, not in a public GitHub issue. See [SECURITY.md](SECURITY.md) and *Reporting a vulnerability* below.
+
 Deleting items and the *Delete all library data on uninstall* option erase data permanently and cannot be undone. Turning that option on requires ticking a warning box and typing `DELETE`; the server rejects the change otherwise.
 
 ## Features
@@ -41,7 +43,9 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 
 ## Installation
 
-1. Copy this folder to `wp-content/plugins/church-library` (or zip it and use *Plugins → Add New → Upload*).
+> **Do not install GitHub's "Download ZIP" or a git clone directly.** GitHub names the folder after the branch (`church-library-main`), so a later proper install becomes a *second copy* of the plugin sharing the same tables, and the download carries development files (a clone also carries the `.git` folder with the whole project history) into your web root. Use a release zip, or build one as described in [Building the install zip](#building-the-install-zip).
+
+1. In WordPress go to *Plugins → Add New → Upload Plugin*, choose `church-library-<version>.zip` and press *Install Now*. (Or unzip it and upload the `church-library` folder to `wp-content/plugins/` by SFTP. The folder must be named exactly `church-library`.)
 2. Activate **Church Library**.
 3. Go to **Library → List of Values** and add your churches and buildings. Review the media types and their ID prefixes.
 4. Go to **Library → Settings** to choose whether the catalog is public and to adjust role permissions.
@@ -60,6 +64,40 @@ Activation creates these tables (using your site's table prefix, normally `wp_`)
 The prefix is `clib_` with an underscore rather than `clib-`, because hyphens in MySQL table names must be back-quoted in every query and are not supported by WordPress's `dbDelta()`.
 
 All schema and seed SQL lives in PHP (`includes/class-clib-db.php`); the plugin ships no `.sql` files.
+
+After activating, open **Library → Settings** and check the **Installation health** box at the top. It should say *Nothing to fix*; press **Run web checks** once to confirm your server blocks the files it should.
+
+## Building the install zip
+
+There is no build step: no compiler, bundler or dependencies. The plugin is the source; it only needs packaging so that the zip holds **one top-level folder named `church-library`** and none of the development files. Use one of these.
+
+### With git (same as the published releases)
+
+From a clone of the repository:
+
+```bash
+git archive --format=zip --prefix=church-library/ -o ../church-library-1.3.7.zip HEAD
+```
+
+(Change the version number to match the `Version:` line in `church-library.php`.) This packs the last commit, not uncommitted edits, and `.gitattributes` keeps development-only files (`.gitattributes`, `.gitignore`, `.github/`, `tools/`) out of the zip. It works the same in Git Bash, PowerShell or a Linux/macOS terminal.
+
+### With PHP, without git
+
+If git is not installed (common on Windows), `tools/build-zip.php` does the same with nothing but PHP:
+
+```bash
+php tools/build-zip.php
+```
+
+It writes `church-library-<version>.zip` next to the plugin folder, taking the version from the plugin header, and prints the path, file count and size. Pass a path to write elsewhere: `php tools/build-zip.php C:\temp\church-library.zip`. It needs PHP's `zip` extension (sometimes switched off in a command-line PHP on Windows; the script says so and stops). It packs the **working tree**, uncommitted edits included, and skips `.git`, `.github`, `tools/`, `.gitignore`, `.gitattributes`, editor folders, logs and zips. Before writing, it checks the files against the list the installation health check uses (`CLIB_Health::MANIFEST` in `includes/class-clib-health.php`) and that every folder has its `index.php`, and refuses to build if they disagree. When you add a file to the plugin, add it to that list.
+
+### Check the zip before uploading
+
+Open the zip: it must contain exactly one folder, `church-library`, with `church-library.php` directly inside it. If you see `church-library-main/`, `.git/`, `.github/` or `tools/`, it is not a release zip.
+
+### If someone already installed a raw download
+
+*Library → Settings → Installation health* (and a notice on the Plugins screen) will say so. To fix it: deactivate the plugin, delete or rename the wrongly named folder (library data is in the database and is kept; check that *Delete all library data on uninstall* is **off** before using *Delete* on the Plugins screen), upload the proper zip, and activate it again.
 
 ## Pages
 
@@ -120,6 +158,12 @@ Borrower names are visible only to users who can check items out, unless *Borrow
 
 ## Security
 
+### Reporting a vulnerability
+
+If you find a security issue, please **email it privately to sysop@maddogproductions.online**. Do not open a public GitHub issue or pull request for it, and please do not publish details until a fixed version is released. Include the plugin version, steps to reproduce, and what an attacker could do. See [SECURITY.md](SECURITY.md) for the full policy.
+
+### How the plugin is protected
+
 The plugin was built to be safe on a public church website:
 
 - **SQL injection**: every query uses `$wpdb->prepare()` or `$wpdb->insert()/update()` with formats. Table and column names come from fixed whitelists, `LIKE` values go through `esc_like()`, and sort columns/directions are whitelisted.
@@ -133,7 +177,8 @@ The plugin was built to be safe on a public church website:
 - **Destructive actions** (delete, archive, merge, Item ID fixes) each need an action-bound nonce, the matching capability, and, for delete, merge and fixes, a confirmation box checked on the server. Merges, ID fixes and deletes run inside database transactions with row locks and roll back on any failure.
 - **Outbound requests**: the lookup can be turned off in settings. It uses `wp_safe_remote_get()` with short timeouts and a size limit, is limited to 30 lookups per user per 5 minutes, and caches results. Cover images are never downloaded from a URL sent by the browser: the server rebuilds the URL from a numeric cover ID and checks the host against the provider's allow list.
 - **Race conditions**: Item IDs are allocated atomically (`LAST_INSERT_ID(expr)`), and check-outs lock the item row so two desks cannot lend the last copy at the same time.
-- **Direct access**: every PHP file exits unless loaded by WordPress, every folder has a "silence is golden" `index.php`, and `.htaccess` files deny direct requests to PHP and other non-asset files on Apache.
+- **Direct access**: every PHP file exits unless loaded by WordPress, every folder has a "silence is golden" `index.php`, every folder of PHP files has a deny-all `.htaccess`, `assets/` serves only CSS, JS and images, and the top-level `.htaccess` refuses hidden paths (`.git/`, `.github/`, `.env`) and non-asset files (`.md`, `.sql`, `.json`, `.log`, `.zip` ...) on Apache. This holds even if someone uploads a raw repository copy instead of a release zip.
+- **Installation health check** (*Library - Settings*, administrators only): checks the plugin folder name, other copies, a `.git` folder, files that are not part of the release, missing `index.php` / `.htaccess` / `ABSPATH` guards, PHP, WordPress and database versions, the library tables, InnoDB and schema version, the image upload folder, HTTPS, on-screen PHP errors and the lookup configuration. **Run web checks** (nonce-protected POST) also asks the site whether it serves `README.md` and `.git/HEAD`, and tests an outgoing https request to api.wordpress.org. All checks only read, and every result is escaped when shown.
 - **Audit log** with user, time and IP (`REMOTE_ADDR` only, as forwarded headers can be spoofed).
 - **Uninstall** removes capabilities. It only drops tables if *Delete all library data on uninstall* is ticked, which an administrator can only turn on by ticking a warning box and typing `DELETE` (checked on the server behind a nonce and `manage_options`, and recorded in the audit log).
 
@@ -142,7 +187,9 @@ The plugin was built to be safe on a public church website:
 nginx ignores `.htaccess`. Add rules like these to your server block:
 
 ```nginx
-location ~* ^/wp-content/plugins/church-library/.*\.(php|md|txt|json|sql)$ { deny all; }
+location ~* ^/wp-content/plugins/church-library/(.*/)?\. { deny all; }
+location ~* ^/wp-content/plugins/church-library/tools/ { deny all; }
+location ~* ^/wp-content/plugins/church-library/.*\.(php|md|txt|json|sql|log|lock|zip)$ { deny all; }
 location ~* ^/wp-content/uploads/church-library/.*\.(php\d?|phtml|phar|pl|py|cgi|sh|html?|js|svg)$ { deny all; }
 ```
 
@@ -164,13 +211,20 @@ A provider returns normalised results (`title`, `creator`, `publisher`, `year`, 
 ```
 church-library.php        Plugin bootstrap
 uninstall.php             Uninstall cleanup
-includes/                 Data model, validation, permissions, lookup, import, reports
+includes/                 Data model, validation, permissions, lookup, import, reports, health check
 admin/                    Admin controller and screen templates
 public/                   Front-end shortcode
 assets/                   CSS and JavaScript
+tools/                    Build script (development only; not in release zips)
+SECURITY.md               How to report a vulnerability
 ```
 
 ## Changelog
+
+### 1.3.7
+- **Installation health** box at the top of *Library - Settings* (administrators only). It warns when the plugin was installed from a GitHub download or clone instead of a release zip (folder not named `church-library`, a second copy, a `.git` folder, files that are not part of this version), when protection files (`index.php`, `.htaccess`, `ABSPATH` checks) are missing, and checks PHP / WordPress / database versions, the library tables (present, InnoDB, schema version), the image upload folder, HTTPS, on-screen PHP errors and the lookup setup. **Run web checks** tests whether the server really refuses `README.md` and `.git/HEAD`, and whether outgoing https works. The Plugins screen shows a notice for a wrongly installed copy.
+- Hardening for raw repository uploads: the top-level `.htaccess` now also refuses hidden paths such as `.git/HEAD` (file-name rules alone did not cover them) and more non-asset file types; `public/views/partials/` gets its `index.php` and `.htaccess`; nginx rules updated.
+- README: how to report a security problem privately (sysop@maddogproductions.online), new [SECURITY.md](SECURITY.md), and *Building the install zip* (git archive or `php tools/build-zip.php`). `.gitattributes` keeps development files out of built zips.
 
 ### 1.3.6
 - Missing Data Audit: the *Edit* links open the item in a new tab, so the report stays open while you fix items.
