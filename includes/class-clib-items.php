@@ -498,6 +498,7 @@ class CLIB_Items {
 				'order'             => 'asc',
 				'page'              => 1,
 				'per_page'          => 25,
+				'search_barcode'    => true, // false on the public catalog: barcodes are staff-only data.
 			)
 		);
 
@@ -506,10 +507,20 @@ class CLIB_Items {
 		$where = array( empty( $args['archived'] ) ? 'i.is_archived = 0' : 'i.is_archived = 1' );
 		$vals  = array();
 
-		if ( '' !== $args['q'] ) {
-			$like    = '%' . $wpdb->esc_like( $args['q'] ) . '%';
-			$where[] = '(i.title LIKE %s OR i.creator LIKE %s OR i.identifier LIKE %s OR i.barcode LIKE %s OR i.item_code LIKE %s OR i.publisher LIKE %s)';
-			array_push( $vals, $like, $like, $like, $like, $like, $like );
+		$q = is_string( $args['q'] ) ? $args['q'] : '';
+		if ( '' !== $q ) {
+			// The term is only ever a bound %s value; esc_like() makes % _ \ literal.
+			$cols = array( 'i.title', 'i.creator', 'i.identifier', 'i.item_code', 'i.publisher' );
+			if ( ! empty( $args['search_barcode'] ) ) {
+				$cols[] = 'i.barcode';
+			}
+			$like  = '%' . $wpdb->esc_like( $q ) . '%';
+			$parts = array();
+			foreach ( $cols as $col ) { // Fixed column list above, never input.
+				$parts[] = "$col LIKE %s";
+				$vals[]  = $like;
+			}
+			$where[] = '(' . implode( ' OR ', $parts ) . ')';
 		}
 		foreach ( array( 'media_type_id', 'church_id', 'building_id', 'classification_id' ) as $col ) {
 			if ( ! empty( $args[ $col ] ) ) {

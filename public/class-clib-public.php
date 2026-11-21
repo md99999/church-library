@@ -71,7 +71,8 @@ class CLIB_Public {
 		}
 
 		self::nav( $key );
-		foreach ( CLIB_Form::take_notices() as $n ) {
+		// Notices are per user; guests share user id 0 and never get any, so skip the lookup.
+		foreach ( ( is_user_logged_in() ? CLIB_Form::take_notices() : array() ) as $n ) {
 			echo '<div class="clib-notice clib-notice-' . esc_attr( $n['type'] ) . '" role="status">' . esc_html( $n['msg'] ) . '</div>';
 		}
 		$views = array(

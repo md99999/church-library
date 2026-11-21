@@ -76,7 +76,7 @@ There is no build step: no compiler, bundler or dependencies. The plugin is the 
 From a clone of the repository:
 
 ```bash
-git archive --format=zip --prefix=church-library/ -o ../church-library-1.3.7.zip HEAD
+git archive --format=zip --prefix=church-library/ -o ../church-library-1.3.8.zip HEAD
 ```
 
 (Change the version number to match the `Version:` line in `church-library.php`.) This packs the last commit, not uncommitted edits, and `.gitattributes` keeps development-only files (`.gitattributes`, `.gitignore`, `.github/`, `tools/`) out of the zip. It works the same in Git Bash, PowerShell or a Linux/macOS terminal.
@@ -167,6 +167,7 @@ If you find a security issue, please **email it privately to sysop@maddogproduct
 The plugin was built to be safe on a public church website:
 
 - **SQL injection**: every query uses `$wpdb->prepare()` or `$wpdb->insert()/update()` with formats. Table and column names come from fixed whitelists, `LIKE` values go through `esc_like()`, and sort columns/directions are whitelisted.
+- **Public catalog search** (the search box and filters on *Library - Catalog*, open to guests when the catalog is public): the term is cut to 800 bytes before any processing, then sanitised (tags, percent-encoded octets, control characters and null bytes removed, invalid UTF-8 dropped) and capped at 100 characters; filters are integers or whitelisted values and arrays are rejected. The term is only ever a bound `LIKE` value after `esc_like()`, never SQL text, a file path or a command. Guests cannot search barcodes (staff-only data). Searches are limited to 60 a minute per IP address (per user when logged in), counted under a keyed hash so raw IPs are not stored; change it with the `clib_catalog_search_rate_limit` filter (0 turns it off, for example behind a proxy that gives every visitor the same address). Page links are rebuilt from the sanitised values only, never echoed from the request URL, and database errors are never shown to visitors (they go to the Audit Log, at most once an hour). The tests in `tools/tests/` check all of this.
 - **CSRF and authorisation**: every state-changing action is a POST to `admin-post.php` with an action-bound nonce (per item for deletes), followed by a capability check before any input is read. The AJAX lookup has a nonce and a capability check, and no `nopriv` handler.
 - **Input validation**: all input is unslashed, sanitised, stripped of control characters and null bytes, and cut to the column's maximum length, so oversized or appended strings are truncated rather than stored. Enumerations (status, condition, difficulty, list types, report names) are whitelisted. IDs that reference lists are checked to exist in the right list, and a building must belong to the selected church.
 - **Output escaping**: everything is escaped at output (`esc_html`, `esc_attr`, `esc_url`, `esc_textarea`). Admin notices are stored server-side per user and never reflected from the URL. Admin JavaScript inserts remote data with `textContent` only.
@@ -215,11 +216,22 @@ includes/                 Data model, validation, permissions, lookup, import, r
 admin/                    Admin controller and screen templates
 public/                   Front-end shortcode
 assets/                   CSS and JavaScript
-tools/                    Build script (development only; not in release zips)
+tools/                    Build script and tests (development only; not in release zips)
 SECURITY.md               How to report a vulnerability
 ```
 
 ## Changelog
+
+### 1.3.8
+- Security review and hardening of the public **catalog search** (search box, filters, sort and page links), which guests can use when the catalog is public. No SQL injection, XSS, path traversal or command injection was found; these changes add defence in depth:
+  - The search term is cut to 800 bytes before sanitising, so an oversized query string never reaches the regular expressions, then capped at 100 characters as before.
+  - Guests can no longer search by barcode. The barcode is only shown to staff, so a guest could previously confirm a barcode by searching for it.
+  - Searches are limited to 60 a minute per IP address (per user when logged in). Over the limit, the page asks the visitor to wait instead of running the query. Filter `clib_catalog_search_rate_limit` changes the number; 0 turns it off.
+  - Page links are built by the plugin from the sanitised search values only. WordPress's `paginate_links()` copied every parameter of the current request URL into the links, so an attacker-crafted link could plant arbitrary (escaped, but unwanted) parameters in the page; that no longer happens.
+  - A database error during a catalog search is never shown to the visitor, even with `WP_DEBUG_DISPLAY` on; it is written to the Audit Log, at most once an hour.
+  - The *Items per page* setting is clamped when read, so a damaged value can no longer cause a division-by-zero error on the catalog.
+  - Sort direction is taken from the whitelisted sort value rather than the raw parameter; page numbers are capped at 10,000; guest page views no longer look up per-user notices.
+- New tests in `tools/tests/` (development only, plain PHP, no WordPress needed): `catalog-search-test.php` (153 checks: SQL injection, XSS, traversal and command strings, wrong types, oversized and broken UTF-8 input, ORDER BY injection, LIKE wildcard escaping, the rate limit) and `catalog-render-test.php` (106 checks that render the catalog page with hostile query strings and inspect the HTML and the queries). Run each with `php tools/tests/<name>.php`.
 
 ### 1.3.7
 - **Installation health** box at the top of *Library - Settings* (administrators only). It warns when the plugin was installed from a GitHub download or clone instead of a release zip (folder not named `church-library`, a second copy, a `.git` folder, files that are not part of this version), when protection files (`index.php`, `.htaccess`, `ABSPATH` checks) are missing, and checks PHP / WordPress / database versions, the library tables (present, InnoDB, schema version), the image upload folder, HTTPS, on-screen PHP errors and the lookup setup. **Run web checks** tests whether the server really refuses `README.md` and `.git/HEAD`, and whether outgoing https works. The Plugins screen shows a notice for a wrongly installed copy.

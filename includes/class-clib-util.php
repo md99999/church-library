@@ -106,6 +106,69 @@ class CLIB_Util {
 		return trim( self::cap( self::strip_controls( $value ), $max ) );
 	}
 
+	/** Longest search term accepted from the public catalog search box, in characters. */
+	const SEARCH_MAX = 100;
+
+	/**
+	 * Public catalog search term.
+	 *
+	 * The raw value is cut to a fixed number of bytes before any sanitising, so an
+	 * oversized query string never reaches the regular expressions in full; a
+	 * multibyte character split by that cut is removed as invalid UTF-8. Then the
+	 * normal single-line rules apply (tags, percent-encoded octets, control
+	 * characters and extra whitespace removed, SEARCH_MAX characters). The result
+	 * is only ever used as a bound value in a prepared LIKE (after esc_like()) and
+	 * escaped on output; it never reaches SQL text, a file path or a shell.
+	 *
+	 * @param mixed $value Raw request value.
+	 * @return string
+	 */
+	public static function search_term( $value ) {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+		$value = substr( $value, 0, self::SEARCH_MAX * 8 );
+		return self::text( $value, self::SEARCH_MAX );
+	}
+
+	/**
+	 * Fixed-window rate limit for an anonymous or per-user action.
+	 *
+	 * Counts hits per client in a transient keyed by a keyed hash (wp_hash) of
+	 * the bucket name and REMOTE_ADDR, so raw IP addresses are never stored.
+	 * Forwarded headers are ignored because the client controls them.
+	 *
+	 * @param string $bucket Short action name.
+	 * @param int    $limit  Hits allowed per window; 0 or less disables the limit.
+	 * @param int    $window Window length in seconds.
+	 * @return bool True when this hit is over the limit (the caller should refuse it).
+	 */
+	public static function rate_limited( $bucket, $limit, $window = 60 ) {
+		$limit  = (int) $limit;
+		$window = max( 1, (int) $window );
+		if ( $limit <= 0 ) {
+			return false;
+		}
+		$who = '';
+		if ( isset( $_SERVER['REMOTE_ADDR'] ) && is_string( $_SERVER['REMOTE_ADDR'] ) ) {
+			$ip  = filter_var( wp_unslash( $_SERVER['REMOTE_ADDR'] ), FILTER_VALIDATE_IP ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- validated as an IP.
+			$who = $ip ? $ip : '';
+		}
+		$who   = is_user_logged_in() ? 'u' . get_current_user_id() : 'ip' . $who;
+		$key   = 'clib_rl_' . substr( wp_hash( sanitize_key( $bucket ) . '|' . $who ), 0, 32 );
+		$now   = time();
+		$state = get_transient( $key );
+		if ( ! is_array( $state ) || ! isset( $state[0], $state[1] ) || (int) $state[0] + $window <= $now ) {
+			$state = array( $now, 0 );
+		}
+		if ( (int) $state[1] >= $limit ) {
+			return true; // Already over: no further write, so a flood costs one read per request.
+		}
+		$state = array( (int) $state[0], (int) $state[1] + 1 );
+		set_transient( $key, $state, max( 1, (int) $state[0] + $window - $now ) );
+		return false;
+	}
+
 	/** Multi-line plain text. */
 	public static function textarea( $value, $max = 5000 ) {
 		if ( is_array( $value ) || is_object( $value ) ) {
