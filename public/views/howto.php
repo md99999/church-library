@@ -53,9 +53,13 @@ $clib_days = (int) CLIB_Settings::get( 'loan_days' );
 		array(
 			/* translators: %s: link to catalog page */
 			sprintf( __( 'Open %s.', 'church-library' ), $clib_link( 'catalog' ) ),
-			__( 'Type part of the title, the author, the publisher, the ISBN or the Item ID in the search box. You can also narrow the list by media type, church, building, classification or status.', 'church-library' ),
+			is_user_logged_in()
+				? __( 'Type part of the title, the author, the publisher, the ISBN or the Item ID in the search box. You can also narrow the list by media type, church, building, classification or status.', 'church-library' )
+				: __( 'Type part of the title, the author, the publisher, the ISBN or the Item ID in the search box. You can also narrow the list by media type, church, classification or status.', 'church-library' ),
 			__( 'Press <strong>Search</strong>. Press <strong>Clear</strong> to start over.', 'church-library' ),
-			__( 'Click an item to see its details: where it is kept (church, building, room and location ID), its condition, and how many copies are available.', 'church-library' ),
+			is_user_logged_in()
+				? __( 'Click an item to see its details: where it is kept (church, building, room and location ID), its condition, and how many copies are available.', 'church-library' )
+				: __( 'Click an item to see its details: which church has it, its condition, and how many copies are available. Log in to see the building and room.', 'church-library' ),
 		)
 	);
 	$clib_p( __( 'The coloured label shows the status: <strong>Checked In</strong> (on the shelf), <strong>Checked Out</strong> (every copy is lent out) or <strong>Not Available</strong> (being repaired, lost or withdrawn).', 'church-library' ) );

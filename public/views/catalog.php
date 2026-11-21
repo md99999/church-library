@@ -14,6 +14,13 @@ $clib_statuses = CLIB_Util::status_labels();
 $clib_code     = CLIB_Util::token( CLIB_Util::get( 'clib_item' ), 32 );
 $clib_staff    = current_user_can( 'clib_circulate' );
 $clib_editor   = current_user_can( 'clib_manage_items' );
+/*
+ * Building and Room say where an item is physically kept, so they are for
+ * logged-in users only. Guests never see them, never get the Building filter,
+ * and a clib_building parameter in a guest request is ignored (not read at all),
+ * so a guest cannot use the filter to work out which building an item is in.
+ */
+$clib_show_place = is_user_logged_in();
 
 /* ---------------------------------------------------------------- Item detail */
 if ( '' !== $clib_code ) :
@@ -37,13 +44,26 @@ if ( '' !== $clib_code ) :
 		__( 'Cat #', 'church-library' )            => $clib_item->call_number,
 		__( 'Condition', 'church-library' )         => CLIB_Util::label( CLIB_Util::condition_labels(), $clib_item->item_condition ),
 		__( 'Church', 'church-library' )            => CLIB_LOV::label( $clib_item->church_id ),
-		__( 'Building', 'church-library' )          => CLIB_LOV::label( $clib_item->building_id ),
-		__( 'Room', 'church-library' )              => $clib_item->room,
 		__( 'Location ID', 'church-library' )       => $clib_item->location_code,
 		__( 'Owned By', 'church-library' )          => $clib_item->owned_by,
 		/* translators: 1: available copies, 2: total copies */
 		__( 'Copies', 'church-library' )            => sprintf( __( '%1$d of %2$d available', 'church-library' ), $clib_avail, (int) $clib_item->copies ),
 	);
+	if ( $clib_show_place ) {
+		// Insert after Church, keeping the usual order for logged-in users.
+		$clib_at     = array_search( __( 'Church', 'church-library' ), array_keys( $clib_fields ), true );
+		$clib_at     = false === $clib_at ? count( $clib_fields ) : $clib_at + 1;
+		$clib_fields = array_slice( $clib_fields, 0, $clib_at, true )
+			+ array(
+				__( 'Building', 'church-library' ) => CLIB_LOV::label( $clib_item->building_id ),
+				__( 'Room', 'church-library' )     => $clib_item->room,
+			)
+			+ array_slice( $clib_fields, $clib_at, null, true );
+	} else {
+		// Defence in depth: drop the values from the object so no later code can print them.
+		$clib_item->building_id = 0;
+		$clib_item->room        = '';
+	}
 	if ( $clib_staff ) {
 		$clib_fields[ __( 'Barcode', 'church-library' ) ] = $clib_item->barcode;
 	}
@@ -120,7 +140,7 @@ $clib_args     = array(
 	'q'                 => CLIB_Util::search_term( CLIB_Util::get( 'clib_q' ) ),
 	'media_type_id'     => CLIB_Util::int( CLIB_Util::get( 'clib_type' ), 0, 4294967295 ),
 	'church_id'         => CLIB_Util::int( CLIB_Util::get( 'clib_church' ), 0, 4294967295 ),
-	'building_id'       => CLIB_Util::int( CLIB_Util::get( 'clib_building' ), 0, 4294967295 ),
+	'building_id'       => $clib_show_place ? CLIB_Util::int( CLIB_Util::get( 'clib_building' ), 0, 4294967295 ) : 0, // Guests: never read.
 	'classification_id' => CLIB_Util::int( CLIB_Util::get( 'clib_class' ), 0, 4294967295 ),
 	'status'            => CLIB_Util::enum( CLIB_Util::get( 'clib_status' ), CLIB_Util::STATUSES, '' ),
 	'orderby'           => CLIB_Util::enum( CLIB_Util::get( 'clib_sort' ), $clib_sorts, 'title' ),
@@ -156,6 +176,15 @@ if ( $clib_limited ) {
 	}
 	$wpdb->suppress_errors( $clib_prev_suppress );
 	$clib_rows  = is_array( $clib_rows ) ? $clib_rows : array();
+	if ( ! $clib_show_place ) {
+		// Defence in depth: the list never prints these, but strip them for guests anyway.
+		foreach ( $clib_rows as $clib_r ) {
+			if ( is_object( $clib_r ) ) {
+				unset( $clib_r->building_id, $clib_r->building_label, $clib_r->room );
+			}
+		}
+		unset( $clib_r );
+	}
 	$clib_total = max( 0, (int) $clib_total );
 }
 $clib_pages   = max( 1, (int) ceil( $clib_total / $clib_per_page ) );
@@ -224,7 +253,9 @@ if ( $clib_pages > 1 ) {
 	<input type="search" name="clib_q" maxlength="<?php echo (int) CLIB_Util::SEARCH_MAX; ?>" value="<?php echo esc_attr( $clib_args['q'] ); ?>" placeholder="<?php esc_attr_e( 'Search title, author, publisher, ISBN, Item ID...', 'church-library' ); ?>" aria-label="<?php esc_attr_e( 'Search', 'church-library' ); ?>">
 	<select name="clib_type" aria-label="<?php esc_attr_e( 'Media type', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'media_type', $clib_args['media_type_id'], __( 'All media types', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="clib_church" class="clib-church" aria-label="<?php esc_attr_e( 'Church', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'church', $clib_args['church_id'], __( 'All churches', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
-	<select name="clib_building" class="clib-building" aria-label="<?php esc_attr_e( 'Building', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'building', $clib_args['building_id'], __( 'All buildings', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<?php if ( $clib_show_place ) : ?>
+		<select name="clib_building" class="clib-building" aria-label="<?php esc_attr_e( 'Building', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'building', $clib_args['building_id'], __( 'All buildings', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
+	<?php endif; ?>
 	<select name="clib_class" aria-label="<?php esc_attr_e( 'Classification', 'church-library' ); ?>"><?php echo CLIB_Form::lov_options( 'classification', $clib_args['classification_id'], __( 'All classifications', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="clib_status" aria-label="<?php esc_attr_e( 'Status', 'church-library' ); ?>"><?php echo CLIB_Form::map_options( $clib_statuses, $clib_args['status'], __( 'Any status', 'church-library' ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></select>
 	<select name="clib_sort" aria-label="<?php esc_attr_e( 'Sort by', 'church-library' ); ?>">
