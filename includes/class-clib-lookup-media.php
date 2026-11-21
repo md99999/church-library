@@ -1,15 +1,18 @@
 <?php
 /**
- * Google Books and TMDB lookup providers.
+ * Google Books (books) and Wikidata (movies) lookup providers.
  *
  * - Google Books (https://developers.google.com/books/docs/v1/using): books by
  *   title or ISBN. Works without a key at low volume; an optional API key from
  *   Google Cloud raises the quota. The key travels in the X-goog-api-key header,
  *   never in the URL.
- * - TMDB (https://developer.themoviedb.org/docs): movies on DVD / Blu-ray / VHS.
- *   Needs a free API Read Access Token (sent as a Bearer header) or a v3 API key.
- *   "This product uses the TMDB API but is not endorsed or certified by TMDB."
  *
+ * - Wikidata (https://www.wikidata.org/wiki/Wikidata:Data_access): movies, TV
+ *   films and series (DVD / Blu-ray / VHS), by title, with year and director.
+ *   Free, no key; data is CC0. Covers are not imported: film posters on
+ *   Wikimedia Commons are rare and carry their own licences.
+ *
+ * TMDB was dropped in 1.3.2 (its licence for this use is paid).
  * IMDb has no free official API (its data is sold through AWS Data Exchange) and
  * scraping its site breaks its terms, so it is not included.
  *
@@ -128,20 +131,27 @@ class CLIB_Lookup_GoogleBooks implements CLIB_Lookup_Provider {
 	}
 }
 
-class CLIB_Lookup_TMDB implements CLIB_Lookup_Provider {
+class CLIB_Lookup_Wikidata implements CLIB_Lookup_Provider {
 
-	/** Poster file names such as /kqjL17yufvn9OVLyXYpvtyrFfak.jpg. */
-	const POSTER = '/^[A-Za-z0-9]{10,64}\.(jpg|jpeg|png)$/';
+	/** Wikidata item ids. */
+	const QID = '/^Q[1-9][0-9]{0,11}$/';
 
-	/** How many top results get an extra request for their director. */
-	const CREDIT_LOOKUPS = 3;
+	/** API endpoint (fixed). */
+	const API = 'https://www.wikidata.org/w/api.php';
+
+	/**
+	 * "Instance of" values accepted as screen works: film, feature film, animated,
+	 * documentary, short, television film, television series, miniseries,
+	 * television special, concert film, musical film.
+	 */
+	const SCREEN_TYPES = array( 'Q11424', 'Q24869', 'Q202866', 'Q93204', 'Q24862', 'Q506240', 'Q5398426', 'Q1259759', 'Q1261214', 'Q1257444', 'Q842256' );
 
 	public function id() {
-		return 'tmdb';
+		return 'wikidata';
 	}
 
 	public function label() {
-		return 'TMDB';
+		return 'Wikidata';
 	}
 
 	public function kind() {
@@ -149,102 +159,165 @@ class CLIB_Lookup_TMDB implements CLIB_Lookup_Provider {
 	}
 
 	public function allowed_hosts() {
-		return array( 'image.tmdb.org' );
-	}
-
-	/** [ header name => value ] or [ 'api_key' => key ] for the query string, or [] when not set up. */
-	private function auth() {
-		$token = (string) CLIB_Settings::get( 'tmdb_token' );
-		if ( CLIB_Settings::valid_tmdb_token( $token ) ) {
-			return array( 'header' => 'Bearer ' . $token );
-		}
-		$key = (string) CLIB_Settings::get( 'tmdb_key' );
-		if ( CLIB_Settings::valid_tmdb_key( $key ) ) {
-			return array( 'api_key' => $key );
-		}
 		return array();
 	}
 
-	public function is_configured() {
-		return (bool) $this->auth();
-	}
-
-	/** GET a fixed api.themoviedb.org path with auth. */
-	private function get( $path, array $args ) {
-		$auth = $this->auth();
-		if ( ! $auth ) {
-			return null;
-		}
-		$headers = array();
-		if ( isset( $auth['header'] ) ) {
-			$headers['Authorization'] = $auth['header'];
-		} else {
-			$args['api_key'] = $auth['api_key']; // v3 keys only work in the query string.
-		}
-		return CLIB_Lookup::http_json( add_query_arg( $args, 'https://api.themoviedb.org/3/' . $path ), $headers );
-	}
-
 	public function cover_url( $cover_ref ) {
-		$cover_ref = (string) $cover_ref;
-		return preg_match( self::POSTER, $cover_ref ) ? 'https://image.tmdb.org/t/p/w500/' . $cover_ref : '';
+		return '';
 	}
 
-	public function search( $type, $query ) {
-		if ( 'title' !== $type ) {
-			return array(); // TMDB has no barcode / ISBN search.
-		}
-		$data = $this->get(
-			'search/movie',
+	/** Call the API with fixed parameters plus $args. */
+	private function api( array $args ) {
+		CLIB_Lookup::wait_turn( 'wikidata', 200 );
+		$args = array_merge(
+			$args,
 			array(
-				'query'         => rawurlencode( $query ),
-				'include_adult' => 'false',
-				'page'          => 1,
+				'format'        => 'json',
+				'formatversion' => 2,
+				'maxlag'        => 5,
 			)
 		);
+		return CLIB_Lookup::http_json( add_query_arg( $args, self::API ) );
+	}
+
+	/** Site language as a Wikidata language code (falls back to English). */
+	private function lang() {
+		$l = strtolower( substr( (string) get_locale(), 0, 2 ) );
+		return preg_match( '/^[a-z]{2}$/', $l ) ? $l : 'en';
+	}
+
+	/** Pull the item ids out of a claim list (only well-formed ones). */
+	private static function claim_ids( $claims, $prop ) {
 		$out = array();
-		if ( empty( $data['results'] ) || ! is_array( $data['results'] ) ) {
+		if ( ! isset( $claims[ $prop ] ) || ! is_array( $claims[ $prop ] ) ) {
 			return $out;
 		}
-		$n = 0;
-		foreach ( array_slice( $data['results'], 0, 10 ) as $m ) {
-			if ( ! is_array( $m ) || empty( $m['id'] ) || ! is_numeric( $m['id'] ) ) {
-				continue;
+		foreach ( $claims[ $prop ] as $c ) {
+			$id = isset( $c['mainsnak']['datavalue']['value']['id'] ) ? $c['mainsnak']['datavalue']['value']['id'] : '';
+			if ( is_string( $id ) && preg_match( self::QID, $id ) ) {
+				$out[] = $id;
 			}
-			$id     = (int) $m['id'];
-			$poster = isset( $m['poster_path'] ) && is_string( $m['poster_path'] ) ? ltrim( $m['poster_path'], '/' ) : '';
-			$poster = preg_match( self::POSTER, $poster ) ? $poster : '';
-			$title  = isset( $m['title'] ) && is_scalar( $m['title'] ) ? (string) $m['title'] : '';
-			$date   = isset( $m['release_date'] ) && is_string( $m['release_date'] ) ? $m['release_date'] : '';
-			$out[]  = array(
-				'title'       => $title,
-				// Director for the first few results, so the Author field can rank them.
-				'creator'     => $n++ < self::CREDIT_LOOKUPS ? $this->director( $id ) : '',
-				'publisher'   => '',
-				'year'        => substr( $date, 0, 4 ),
-				'identifier'  => '',
-				'description' => isset( $m['overview'] ) && is_string( $m['overview'] ) ? $m['overview'] : '',
-				'cover_ref'   => $poster,
-				'cover_thumb' => '' !== $poster ? 'https://image.tmdb.org/t/p/w92/' . $poster : '',
-			);
 		}
 		return $out;
 	}
 
-	/** Director name(s) for a movie id, or ''. */
-	private function director( $movie_id ) {
-		$data = $this->get( 'movie/' . (int) $movie_id . '/credits', array() );
-		if ( empty( $data['crew'] ) || ! is_array( $data['crew'] ) ) {
-			return '';
-		}
-		$names = array();
-		foreach ( $data['crew'] as $c ) {
-			if ( is_array( $c ) && isset( $c['job'], $c['name'] ) && 'Director' === $c['job'] && is_string( $c['name'] ) ) {
-				$names[] = $c['name'];
+	/** Earliest year from a time claim ("+1986-05-16T00:00:00Z"). */
+	private static function claim_year( $claims, $prop ) {
+		$years = array();
+		foreach ( isset( $claims[ $prop ] ) && is_array( $claims[ $prop ] ) ? $claims[ $prop ] : array() as $c ) {
+			$t = isset( $c['mainsnak']['datavalue']['value']['time'] ) ? $c['mainsnak']['datavalue']['value']['time'] : '';
+			if ( is_string( $t ) && preg_match( '/^\+([0-9]{4})-/', $t, $m ) ) {
+				$years[] = (int) $m[1];
 			}
-			if ( count( $names ) >= 2 ) {
+		}
+		return $years ? (string) min( $years ) : '';
+	}
+
+	/** Label in $lang, else English, else ''. */
+	private static function label_of( $entity, $lang ) {
+		foreach ( array( $lang, 'en' ) as $l ) {
+			if ( isset( $entity['labels'][ $l ]['value'] ) && is_string( $entity['labels'][ $l ]['value'] ) ) {
+				return $entity['labels'][ $l ]['value'];
+			}
+		}
+		return '';
+	}
+
+	public function search( $type, $query ) {
+		if ( 'title' !== $type ) {
+			return array(); // Wikidata has no barcode search.
+		}
+		$lang = $this->lang();
+		// 1. Find candidate items by title.
+		$found = $this->api(
+			array(
+				'action'   => 'wbsearchentities',
+				'search'   => rawurlencode( $query ),
+				'language' => $lang,
+				'uselang'  => $lang,
+				'type'     => 'item',
+				'limit'    => 20,
+			)
+		);
+		$ids = array();
+		foreach ( isset( $found['search'] ) && is_array( $found['search'] ) ? $found['search'] : array() as $hit ) {
+			if ( is_array( $hit ) && isset( $hit['id'] ) && is_string( $hit['id'] ) && preg_match( self::QID, $hit['id'] ) ) {
+				$ids[] = $hit['id'];
+			}
+		}
+		if ( ! $ids ) {
+			return array();
+		}
+		// 2. Keep the ones that are films or TV works.
+		$data = $this->api(
+			array(
+				'action'    => 'wbgetentities',
+				'ids'       => implode( '|', $ids ),
+				'props'     => 'labels|descriptions|claims',
+				'languages' => $lang . ( 'en' === $lang ? '' : '|en' ),
+			)
+		);
+		$films     = array();
+		$directors = array();
+		foreach ( $ids as $qid ) { // Search order = relevance.
+			$e = isset( $data['entities'][ $qid ] ) && is_array( $data['entities'][ $qid ] ) ? $data['entities'][ $qid ] : null;
+			if ( ! $e || ! isset( $e['claims'] ) || ! is_array( $e['claims'] ) ) {
+				continue;
+			}
+			if ( ! array_intersect( self::claim_ids( $e['claims'], 'P31' ), self::SCREEN_TYPES ) ) {
+				continue;
+			}
+			$dir     = array_slice( self::claim_ids( $e['claims'], 'P57' ), 0, 2 );
+			$films[] = array( $qid, $e, $dir );
+			foreach ( $dir as $d ) {
+				$directors[ $d ] = '';
+			}
+			if ( count( $films ) >= 8 ) {
 				break;
 			}
 		}
-		return implode( ', ', $names );
+		// 3. Director names, in one request.
+		if ( $directors ) {
+			$people = $this->api(
+				array(
+					'action'    => 'wbgetentities',
+					'ids'       => implode( '|', array_slice( array_keys( $directors ), 0, 50 ) ),
+					'props'     => 'labels',
+					'languages' => $lang . ( 'en' === $lang ? '' : '|en' ),
+				)
+			);
+			foreach ( array_keys( $directors ) as $d ) {
+				if ( isset( $people['entities'][ $d ] ) && is_array( $people['entities'][ $d ] ) ) {
+					$directors[ $d ] = self::label_of( $people['entities'][ $d ], $lang );
+				}
+			}
+		}
+		$out = array();
+		foreach ( $films as $f ) {
+			list( $qid, $e, $dir ) = $f;
+			$names = array();
+			foreach ( $dir as $d ) {
+				if ( '' !== $directors[ $d ] ) {
+					$names[] = $directors[ $d ];
+				}
+			}
+			$desc  = '';
+			foreach ( array( $lang, 'en' ) as $l ) {
+				if ( '' === $desc && isset( $e['descriptions'][ $l ]['value'] ) && is_string( $e['descriptions'][ $l ]['value'] ) ) {
+					$desc = $e['descriptions'][ $l ]['value'];
+				}
+			}
+			$out[] = array(
+				'title'       => self::label_of( $e, $lang ),
+				'creator'     => implode( ', ', $names ),
+				'publisher'   => '',
+				'year'        => self::claim_year( $e['claims'], 'P577' ),
+				'identifier'  => '',
+				'description' => trim( $desc . "\nhttps://www.wikidata.org/wiki/" . $qid ),
+				'cover_ref'   => '',
+				'cover_thumb' => '',
+			);
+		}
+		return $out;
 	}
 }

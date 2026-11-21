@@ -54,7 +54,7 @@ if ( '' !== $clib_code ) :
 	<p><a href="<?php echo esc_url( $clib_base ); ?>">&larr; <?php esc_html_e( 'Back to catalog', 'church-library' ); ?></a></p>
 	<div class="clib-item-head">
 		<?php if ( $clib_item->image_id ) : ?>
-			<div class="clib-item-image"><?php echo wp_get_attachment_image( (int) $clib_item->image_id, 'medium', false, array( 'alt' => $clib_item->title ) ); ?></div>
+			<div class="clib-item-image"><?php echo wp_get_attachment_image( (int) $clib_item->image_id, 'medium', false, array( 'alt' => $clib_item->title ) ); ?><?php echo CLIB_Attribution::image_credit( (int) $clib_item->image_id ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></div>
 		<?php endif; ?>
 		<div>
 			<h2><?php echo esc_html( $clib_item->title ); ?></h2>

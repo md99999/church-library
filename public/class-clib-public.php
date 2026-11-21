@@ -82,6 +82,7 @@ class CLIB_Public {
 			'howto'    => 'howto.php',
 		);
 		include CLIB_DIR . 'public/views/' . $views[ $key ]; // Fixed map: no user input reaches the path.
+		echo CLIB_Attribution::footer_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built from escaped parts.
 		echo '</div>';
 		return ob_get_clean();
 	}

@@ -22,10 +22,8 @@ class CLIB_Settings {
 			'loan_days'        => 21,
 			'per_page'         => 25,
 			'lookup_enabled'   => 1,  // Title / ISBN lookup master switch.
-			'lookup_providers' => array( 'openlibrary', 'googlebooks', 'musicbrainz', 'hymnary', 'imslp' ),
+			'lookup_providers' => array( 'openlibrary', 'googlebooks', 'wikidata', 'musicbrainz', 'hymnary', 'imslp' ),
 			'google_books_key' => '', // Optional; raises the Google Books quota.
-			'tmdb_token'       => '', // TMDB API Read Access Token (preferred).
-			'tmdb_key'         => '', // Or a TMDB v3 API key.
 			'discogs_token'    => '',
 			'discogs_key'      => '',
 			'discogs_secret'   => '',
@@ -45,9 +43,33 @@ class CLIB_Settings {
 		}
 	}
 
+	/** Settings of sources that were removed (TMDB, dropped in 1.3.2). Never read; purged on upgrade. */
+	const REMOVED_KEYS = array( 'tmdb_token', 'tmdb_key' );
+
 	public static function all() {
 		$opt = get_option( self::OPTION );
-		return array_merge( self::defaults(), is_array( $opt ) ? $opt : array() );
+		$all = array_merge( self::defaults(), is_array( $opt ) ? $opt : array() );
+		return array_diff_key( $all, array_flip( self::REMOVED_KEYS ) );
+	}
+
+	/** Delete stored credentials and choices of removed sources (run once per plugin version). */
+	public static function purge_removed() {
+		$opt = get_option( self::OPTION );
+		if ( ! is_array( $opt ) ) {
+			return;
+		}
+		$clean = array_diff_key( $opt, array_flip( self::REMOVED_KEYS ) );
+		if ( isset( $clean['lookup_providers'] ) && is_array( $clean['lookup_providers'] ) ) {
+			$had_tmdb                  = in_array( 'tmdb', $clean['lookup_providers'], true );
+			$clean['lookup_providers'] = array_values( array_diff( $clean['lookup_providers'], array( 'tmdb' ) ) );
+			// Sites that used TMDB for movies get the free Wikidata source instead.
+			if ( $had_tmdb && ! in_array( 'wikidata', $clean['lookup_providers'], true ) ) {
+				$clean['lookup_providers'][] = 'wikidata';
+			}
+		}
+		if ( $clean !== $opt ) {
+			update_option( self::OPTION, $clean, false );
+		}
 	}
 
 	public static function get( $key ) {
@@ -66,16 +88,6 @@ class CLIB_Settings {
 	/** Google API key: "AIza" style keys are 39 characters of letters, digits, - and _. */
 	public static function valid_google_key( $v ) {
 		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9_-]{30,64}$/', $v );
-	}
-
-	/** TMDB API Read Access Token (a signed JWT: base64url segments separated by dots). */
-	public static function valid_tmdb_token( $v ) {
-		return is_string( $v ) && 1 === preg_match( '/^[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}$/', $v ) && strlen( $v ) <= 1024;
-	}
-
-	/** TMDB v3 API key: 32 hexadecimal characters. */
-	public static function valid_tmdb_key( $v ) {
-		return is_string( $v ) && 1 === preg_match( '/^[A-Fa-f0-9]{32}$/', $v );
 	}
 
 	/**
@@ -152,8 +164,6 @@ class CLIB_Settings {
 		}
 
 		self::secret( $raw, $out, 'google_books_key', 'google_books_key_clear', array( __CLASS__, 'valid_google_key' ), __( 'Google Books API key', 'church-library' ) );
-		self::secret( $raw, $out, 'tmdb_token', 'tmdb_clear', array( __CLASS__, 'valid_tmdb_token' ), __( 'TMDB API Read Access Token', 'church-library' ) );
-		self::secret( $raw, $out, 'tmdb_key', 'tmdb_clear', array( __CLASS__, 'valid_tmdb_key' ), __( 'TMDB API key', 'church-library' ) );
 		return $out;
 	}
 

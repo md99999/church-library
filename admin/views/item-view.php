@@ -174,6 +174,6 @@ if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 	</div>
 
 	<?php if ( $clib_item->image_id ) : ?>
-		<div class="clib-item-side"><?php echo wp_get_attachment_image( (int) $clib_item->image_id, 'medium', false, array( 'alt' => $clib_item->title ) ); ?></div>
+		<div class="clib-item-side"><?php echo wp_get_attachment_image( (int) $clib_item->image_id, 'medium', false, array( 'alt' => $clib_item->title ) ); ?><?php echo CLIB_Attribution::image_credit( (int) $clib_item->image_id ); // phpcs:ignore WordPress.Security.EscapeOutput -- escaped in builder. ?></div>
 	<?php endif; ?>
 </div>

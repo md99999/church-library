@@ -42,6 +42,7 @@ class CLIB_DB {
 		// 1.1 added a page per task; create them once for sites upgraded from 1.0.
 		if ( get_option( 'clib_pages_version' ) !== CLIB_VERSION ) {
 			add_action( 'init', array( 'CLIB_Pages', 'setup' ), 20 );
+			CLIB_Settings::purge_removed(); // Removes the TMDB API key saved by 1.3.0 / 1.3.1.
 			update_option( 'clib_pages_version', CLIB_VERSION, false );
 		}
 	}
