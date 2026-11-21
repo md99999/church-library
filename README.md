@@ -76,7 +76,7 @@ There is no build step: no compiler, bundler or dependencies. The plugin is the 
 From a clone of the repository:
 
 ```bash
-git archive --format=zip --prefix=church-library/ -o ../church-library-1.3.9.zip HEAD
+git archive --format=zip --prefix=church-library/ -o ../church-library-1.4.0.zip HEAD
 ```
 
 (Change the version number to match the `Version:` line in `church-library.php`.) This packs the last commit, not uncommitted edits, and `.gitattributes` keeps development-only files (`.gitattributes`, `.gitignore`, `.github/`, `tools/`) out of the zip. It works the same in Git Bash, PowerShell or a Linux/macOS terminal.
@@ -221,6 +221,10 @@ SECURITY.md               How to report a vulnerability
 ```
 
 ## Changelog
+
+### 1.4.0
+- **Building** and **Room** are now shown to logged-in users only. On the public catalog, guests (not logged in) no longer see them on the item page, the Building filter is removed from the search form, and a `clib_building` value in a guest's URL is ignored (it is not read, not used in the query and not copied into page links), so a guest cannot use the filter to work out where an item is kept. The values are also removed from the item data before the page is drawn for a guest. Church and Location ID are still shown to everyone. Staff screens, reports and logged-in users are unchanged. The How To page wording follows the same rule.
+- New test `tools/tests/catalog-place-test.php` (21 checks) renders the catalog as a guest and as a logged-in user and checks the list, the item page, the filter form, page links and the SQL.
 
 ### 1.3.9
 - Every plugin page, on the front end and in the admin, now ends with a small attribution line: *Church Library · Source: github.com/md99999/church-library*, linking to the source code. It sits in the existing footer under the lookup-source credit, opens in a new tab (`rel="noopener noreferrer"`), and is left off printed pages such as the Inventory Checklist. The address is a fixed constant in `CLIB_Attribution`, never read from settings or filters, so it cannot be used to inject a link.
