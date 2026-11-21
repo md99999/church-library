@@ -76,7 +76,7 @@ There is no build step: no compiler, bundler or dependencies. The plugin is the 
 From a clone of the repository:
 
 ```bash
-git archive --format=zip --prefix=church-library/ -o ../church-library-1.3.8.zip HEAD
+git archive --format=zip --prefix=church-library/ -o ../church-library-1.3.9.zip HEAD
 ```
 
 (Change the version number to match the `Version:` line in `church-library.php`.) This packs the last commit, not uncommitted edits, and `.gitattributes` keeps development-only files (`.gitattributes`, `.gitignore`, `.github/`, `tools/`) out of the zip. It works the same in Git Bash, PowerShell or a Linux/macOS terminal.
@@ -221,6 +221,9 @@ SECURITY.md               How to report a vulnerability
 ```
 
 ## Changelog
+
+### 1.3.9
+- Every plugin page, on the front end and in the admin, now ends with a small attribution line: *Church Library · Source: github.com/md99999/church-library*, linking to the source code. It sits in the existing footer under the lookup-source credit, opens in a new tab (`rel="noopener noreferrer"`), and is left off printed pages such as the Inventory Checklist. The address is a fixed constant in `CLIB_Attribution`, never read from settings or filters, so it cannot be used to inject a link.
 
 ### 1.3.8
 - Security review and hardening of the public **catalog search** (search box, filters, sort and page links), which guests can use when the catalog is public. No SQL injection, XSS, path traversal or command injection was found; these changes add defence in depth:

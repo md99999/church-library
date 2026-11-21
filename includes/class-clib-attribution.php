@@ -1,6 +1,7 @@
 <?php
 /**
- * Source attribution for lookup data and images.
+ * Source attribution for lookup data and images, and the page footer that
+ * links to the plugin's source code.
  *
  * Google Books results and covers are credited to Google Books. The source of
  * an imported cover is recorded on its attachment so the credit can be shown
@@ -47,11 +48,20 @@ class CLIB_Attribution {
 		'discogs'     => array( 'Discogs', 'https://www.discogs.com/', '' ),
 	);
 
+	/** Public source repository. Hard-coded on purpose: never taken from settings or filters. */
+	const SOURCE_URL = 'https://github.com/md99999/church-library';
+
 	/**
-	 * Escaped footer line crediting the lookup sources that are switched on.
-	 * Empty when lookup is off or no known source is enabled.
+	 * Escaped footer shown at the bottom of every plugin page (front end and admin):
+	 * the lookup-source credit (when any source is switched on) and the link to the
+	 * plugin's source code.
 	 */
 	public static function footer_html() {
+		return '<div class="clib-footer-credit">' . self::lookup_credit_html() . self::source_credit_html() . '</div>';
+	}
+
+	/** Escaped line crediting the lookup sources that are switched on; empty when none. */
+	private static function lookup_credit_html() {
 		if ( ! CLIB_Settings::get( 'lookup_enabled' ) || ! class_exists( 'CLIB_Lookup' ) ) {
 			return '';
 		}
@@ -70,7 +80,17 @@ class CLIB_Attribution {
 		if ( ! $links ) {
 			return '';
 		}
-		return '<p class="clib-credit clib-footer-credit">' . esc_html__( 'Lookup data from:', 'church-library' ) . ' ' . implode( ' &middot; ', $links ) . '</p>';
+		return '<p class="clib-credit">' . esc_html__( 'Lookup data from:', 'church-library' ) . ' ' . implode( ' &middot; ', $links ) . '</p>';
+	}
+
+	/** Escaped "Church Library - Source: github.com/..." line linking to the repository. */
+	private static function source_credit_html() {
+		$label = preg_replace( '#^https://#', '', self::SOURCE_URL );
+		return '<p class="clib-credit clib-source-credit">'
+			. esc_html__( 'Church Library', 'church-library' ) . ' &middot; '
+			. esc_html__( 'Source:', 'church-library' ) . ' '
+			. '<a href="' . esc_url( self::SOURCE_URL ) . '" target="_blank" rel="noopener noreferrer">' . esc_html( $label ) . '</a>'
+			. '</p>';
 	}
 
 	/** Remember which lookup source an imported cover came from. */
