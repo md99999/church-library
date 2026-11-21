@@ -269,6 +269,21 @@
 		});
 	}
 
+	// Show / hide an API key field so a pasted key can be checked before saving.
+	each('.clib-reveal', function (btn) {
+		var input = document.getElementById(btn.getAttribute('aria-controls') || '');
+		if (!input || !input.classList.contains('clib-secret')) {
+			return;
+		}
+		var showText = btn.textContent;
+		btn.addEventListener('click', function () {
+			var show = input.type === 'password';
+			input.type = show ? 'text' : 'password';
+			btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+			btn.textContent = show ? (t.hide || 'Hide') : showText;
+		});
+	});
+
 	var lt = document.getElementById('clib-lookup-title');
 	var li = document.getElementById('clib-lookup-isbn');
 	if (lt) {

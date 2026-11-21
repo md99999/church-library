@@ -169,6 +169,14 @@ assets/                   CSS and JavaScript
 
 ## Changelog
 
+### 1.3.3
+- API key fields no longer pick up a browser's saved login password (which could replace or shorten a pasted key). The fields are wider, have a Show button to check a key before saving, and show the saved key's last four characters and length so you can confirm it was stored whole.
+- A key in the wrong format is refused, never shortened: the error names the field and says how many characters were received and what was expected. Spaces, line breaks and invisible characters picked up while copying are removed first.
+- Library - Settings > **Show this server's IP address**: finds the server's outgoing IPv4 and IPv6 addresses (via ipify.org, only when clicked) to add to an API key's IP restriction. On shared hosting this is often not the address the site name points to.
+- When Google refuses the key, the lookup says why: IP address restriction (with the address Google saw), website-only restriction, Books API not enabled, or invalid key.
+- Errors are written to the Audit Log (action `error`): lookup sources that refuse or do not answer, cover images that cannot be imported or come from a host not on the allow-list, the lookup rate limit, and a failed IP check. Each distinct error is logged at most once an hour. API keys and response bodies are never logged. Refused API key entries are logged as `settings_rejected` (field name and length only).
+- Google Books keys are checked strictly (39 characters starting with AIza). A saved key that does not match is flagged on the settings page.
+
 ### 1.3.2
 - Removed the TMDB movie lookup source (its licence for this use is paid). Its settings and any saved TMDB key are deleted on update. Sites that had TMDB switched on get Wikidata instead.
 - New free movie source: Wikidata (CC0 data, no key). Searches films, TV films, series and other screen works and fills title, year, director and description, with a link to the Wikidata entry.

@@ -101,25 +101,48 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 						<?php endif; ?>
 						<br>
 					<?php endforeach; ?>
-					<label><?php esc_html_e( 'Discogs personal access token', 'church-library' ); ?>
-						<input type="password" name="clib[discogs_token]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_token'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
-					<?php if ( $clib_s['discogs_token'] ) : ?>
-						<label><input type="checkbox" name="clib[discogs_token_clear]" value="1"> <?php esc_html_e( 'Remove saved token', 'church-library' ); ?></label>
-					<?php endif; ?>
+					<?php
+					$clib_secret = array( 'field' => 'discogs_token', 'label' => __( 'Discogs personal access token', 'church-library' ), 'clear' => 'discogs_token_clear' );
+					include CLIB_DIR . 'admin/views/partials/secret-field.php';
+					?>
 					<p class="description"><?php esc_html_e( 'Or, instead of a token, the consumer key and consumer secret of a Discogs app you registered (on the same Discogs developers page linked above). The API address is built in and cannot be changed.', 'church-library' ); ?></p>
-					<label><?php esc_html_e( 'Discogs consumer key', 'church-library' ); ?>
-						<input type="password" name="clib[discogs_key]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_key'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label><br>
-					<label><?php esc_html_e( 'Discogs consumer secret', 'church-library' ); ?>
-						<input type="password" name="clib[discogs_secret]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['discogs_secret'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
+					<?php
+					$clib_secret = array( 'field' => 'discogs_key', 'label' => __( 'Discogs consumer key', 'church-library' ), 'clear' => '' );
+					include CLIB_DIR . 'admin/views/partials/secret-field.php';
+					$clib_secret = array( 'field' => 'discogs_secret', 'label' => __( 'Discogs consumer secret', 'church-library' ), 'clear' => '' );
+					include CLIB_DIR . 'admin/views/partials/secret-field.php';
+					?>
 					<?php if ( $clib_s['discogs_key'] || $clib_s['discogs_secret'] ) : ?>
-						<br><label><input type="checkbox" name="clib[discogs_app_clear]" value="1"> <?php esc_html_e( 'Remove saved key and secret', 'church-library' ); ?></label>
+						<label><input type="checkbox" name="clib[discogs_app_clear]" value="1"> <?php esc_html_e( 'Remove saved key and secret', 'church-library' ); ?></label>
 					<?php endif; ?>
-					<p class="description"><?php esc_html_e( 'API keys are stored in the WordPress options table, sent only over https to the fixed address of their own service, and never shown on this page again. Leave a field blank to keep the saved value.', 'church-library' ); ?></p>
-					<label><?php esc_html_e( 'Google Books API key (optional)', 'church-library' ); ?>
-						<input type="password" name="clib[google_books_key]" value="" maxlength="64" autocomplete="off" class="regular-text" placeholder="<?php echo $clib_s['google_books_key'] ? esc_attr__( 'Saved (leave blank to keep)', 'church-library' ) : ''; ?>"></label>
-					<?php if ( $clib_s['google_books_key'] ) : ?>
-						<label><input type="checkbox" name="clib[google_books_key_clear]" value="1"> <?php esc_html_e( 'Remove saved key', 'church-library' ); ?></label>
-					<?php endif; ?>
+					<p class="description"><?php esc_html_e( 'API keys are stored in the WordPress options table, sent only over https to the fixed address of their own service, and never shown on this page again (only the last four characters and the length, so you can check a key was saved whole). Leave a field blank to keep the saved value. Use Show to check a key before saving; a key in the wrong format is refused, never shortened.', 'church-library' ); ?></p>
+					<?php
+					$clib_secret = array( 'field' => 'google_books_key', 'label' => __( 'Google Books API key (optional)', 'church-library' ), 'clear' => 'google_books_key_clear' );
+					include CLIB_DIR . 'admin/views/partials/secret-field.php';
+					?>
+					<div id="clib-server-ip" class="clib-server-ip">
+						<p class="description"><?php esc_html_e( 'If you restrict the Google key to IP addresses, use this server\'s outgoing address (on shared hosting it is often not the address your site name points to).', 'church-library' ); ?></p>
+						<?php // Submits the separate form below the settings form (forms cannot be nested). ?>
+						<button type="submit" form="clib-outbound-ip-form" class="button"><?php esc_html_e( 'Show this server\'s IP address', 'church-library' ); ?></button>
+						<?php
+						$clib_ips = get_transient( 'clib_outbound_ip_' . get_current_user_id() );
+						if ( is_array( $clib_ips ) && ( ! empty( $clib_ips['ipv4'] ) || ! empty( $clib_ips['ipv6'] ) ) ) :
+							?>
+							<ul class="clib-ip-list">
+								<?php foreach ( array( 'ipv4' => __( 'IPv4', 'church-library' ), 'ipv6' => __( 'IPv6', 'church-library' ) ) as $clib_fam => $clib_fam_label ) : ?>
+									<li><?php echo esc_html( $clib_fam_label ); ?>:
+										<?php if ( ! empty( $clib_ips[ $clib_fam ] ) && false !== filter_var( $clib_ips[ $clib_fam ], FILTER_VALIDATE_IP ) ) : ?>
+											<code class="clib-ip"><?php echo esc_html( $clib_ips[ $clib_fam ] ); ?></code>
+										<?php else : ?>
+											<?php esc_html_e( 'none (this server does not use it for outgoing requests)', 'church-library' ); ?>
+										<?php endif; ?>
+									</li>
+								<?php endforeach; ?>
+							</ul>
+							<p class="description"><?php esc_html_e( 'Add each address shown to the key in Google Cloud: APIs & Services > Credentials > your key > Application restrictions > IP addresses. Changes can take a few minutes to apply.', 'church-library' ); ?></p>
+						<?php endif; ?>
+						<p class="description"><?php esc_html_e( 'The button asks ipify.org which address requests from this server come from. Nothing else is sent.', 'church-library' ); ?></p>
+					</div>
 					<p class="description"><?php esc_html_e( 'IMDb is not offered: it has no free official API, and reading its web pages automatically is against its terms.', 'church-library' ); ?></p>
 				</fieldset>
 			</td>
@@ -180,6 +203,11 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 	</table>
 
 	<?php submit_button( __( 'Save Settings', 'church-library' ) ); ?>
+</form>
+
+<form id="clib-outbound-ip-form" method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+	<?php wp_nonce_field( 'clib_outbound_ip' ); ?>
+	<input type="hidden" name="action" value="clib_outbound_ip">
 </form>
 
 <h2 id="clib-prefixes"><?php esc_html_e( 'Item ID prefixes', 'church-library' ); ?></h2>

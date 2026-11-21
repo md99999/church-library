@@ -48,6 +48,7 @@ class CLIB_Admin {
 			'clib_save_lov',
 			'clib_delete_lov',
 			'clib_save_settings',
+			'clib_outbound_ip',
 			'clib_setup_pages',
 			'clib_bulk_prepare',
 			'clib_bulk_apply',
@@ -93,6 +94,7 @@ class CLIB_Admin {
 				'lookupNonce'   => wp_create_nonce( 'clib_lookup' ),
 				'lookupEnabled' => (bool) CLIB_Settings::get( 'lookup_enabled' ),
 				'i18n'          => array(
+					'hide'          => __( 'Hide', 'church-library' ),
 					'confirmDelete' => __( 'Delete this permanently? This cannot be undone.', 'church-library' ),
 					'confirmMerge'  => __( 'Merge these records? The other records will be deleted and their copies added to the one you keep. This cannot be undone.', 'church-library' ),
 					'confirmFix'    => __( 'Give the ticked items new Item IDs? Labels printed with the old IDs will need to be reprinted.', 'church-library' ),
@@ -296,6 +298,19 @@ class CLIB_Admin {
 		exit;
 	}
 
+	/** Look up this server's outbound IP addresses (for an API key's IP restriction). */
+	public static function handle_outbound_ip() {
+		self::guard( 'clib_outbound_ip', 'manage_options' );
+		$ips = CLIB_Lookup::outbound_ips();
+		set_transient( 'clib_outbound_ip_' . get_current_user_id(), $ips, 10 * MINUTE_IN_SECONDS );
+		if ( '' === $ips['ipv4'] && '' === $ips['ipv6'] ) {
+			CLIB_Audit::log_error( 'ipify', 'Server IP address lookup got no answer.', 'settings' );
+			self::notice( __( 'Could not find this server\'s IP address: the address service did not answer. Try again in a minute, or ask your host for the server\'s outgoing IP address.', 'church-library' ), 'error' );
+		}
+		wp_safe_redirect( self::url( 'clib-settings' ) . '#clib-server-ip' );
+		exit;
+	}
+
 	public static function handle_merge_items() {
 		self::guard( 'clib_merge_items', 'clib_delete_items' );
 		if ( ! current_user_can( 'clib_manage_items' ) ) {
@@ -459,6 +474,8 @@ class CLIB_Admin {
 
 		CLIB_Settings::save( $settings );
 		if ( CLIB_Settings::$rejected ) {
+			// Field names and lengths only (see CLIB_Settings::secret): never the value.
+			CLIB_Audit::log( 'settings_rejected', 'settings', 0, implode( '; ', CLIB_Settings::$rejected ) );
 			/* translators: %s: list of setting names */
 			self::notice( sprintf( __( 'Not saved (the value was not in the expected format; the previous value was kept): %s.', 'church-library' ), implode( ', ', CLIB_Settings::$rejected ) ), 'error' );
 		}
