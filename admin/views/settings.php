@@ -22,7 +22,10 @@ $clib_pids   = get_option( CLIB_Pages::OPTION, array() );
 	<p><strong><?php esc_html_e( 'You run this plugin at your own risk. The author accepts no responsibility or liability for any loss, damage or compromise arising from its use.', 'church-library' ); ?></strong>
 		<?php esc_html_e( 'Every effort has been made to write it safely, but new vulnerabilities appear in software of every kind every day and no website can be guaranteed secure. It is provided as is, without warranty of any kind, under the GNU General Public License v3 or later.', 'church-library' ); ?></p>
 	<p class="description"><?php esc_html_e( 'Test on a staging site first, keep backups of your database and files, keep WordPress, PHP, your theme and plugins up to date, and serve the site over HTTPS. Deleting items and the delete-on-uninstall option erase library data permanently and cannot be undone. Full details are in the plugin\'s README.md.', 'church-library' ); ?></p>
+	<p class="description"><?php esc_html_e( 'Found a security problem? Please report it privately by email to', 'church-library' ); ?> <a href="mailto:sysop@maddogproductions.online">sysop@maddogproductions.online</a> <?php esc_html_e( '(not in a public GitHub issue).', 'church-library' ); ?></p>
 </div>
+
+<?php include CLIB_DIR . 'admin/views/partials/health.php'; ?>
 
 <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 	<?php wp_nonce_field( 'clib_save_settings' ); ?>

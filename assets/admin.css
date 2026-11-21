@@ -107,3 +107,25 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 	.clib-page-break { break-before: page; page-break-before: always; }
 	.clib-scroll { overflow: visible !important; }
 }
+
+/* Library - Settings > Installation health */
+.clib-health { background: #fff; border: 1px solid #dcdcde; border-left: 4px solid #00a32a; padding: 4px 16px 12px; margin: 12px 0 20px; max-width: 1100px; }
+.clib-health.clib-health-warn { border-left-color: #dba617; }
+.clib-health.clib-health-bad { border-left-color: #d63638; }
+.clib-health h2 { margin-top: 8px; }
+.clib-health h3 { margin: 16px 0 6px; font-size: 14px; }
+.clib-health-summary { font-weight: 600; }
+.clib-health-table th { width: 220px; font-weight: 600; }
+.clib-health-table .clib-health-col-status { width: 80px; }
+.clib-health-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
+.clib-health-pill.clib-health-ok { background: #dcfce7; color: #14532d; }
+.clib-health-pill.clib-health-info { background: #e0ecf8; color: #1d3a5c; }
+.clib-health-pill.clib-health-warning { background: #fef3c7; color: #78350f; }
+.clib-health-pill.clib-health-error { background: #fee2e2; color: #7f1d1d; }
+.clib-health-items { margin: 6px 0 0 18px; list-style: disc; }
+.clib-health-items li { margin: 2px 0; }
+.clib-health-form { margin-top: 14px; }
+.clib-health-form .description { margin-left: 8px; }
+@media screen and (max-width: 782px) {
+	.clib-health-table th, .clib-health-table td { display: block; width: auto; }
+}

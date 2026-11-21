@@ -33,6 +33,7 @@ class CLIB_Admin {
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
+		add_action( 'admin_notices', array( 'CLIB_Health', 'notice' ) ); // Branch-named folder, second copy or .git folder.
 		add_action( 'admin_init', array( 'CLIB_Perms', 'ensure_admin_caps' ) ); // Administrators always hold every library capability, including ones added in updates.
 
 		$actions = array(
@@ -49,6 +50,7 @@ class CLIB_Admin {
 			'clib_delete_lov',
 			'clib_save_settings',
 			'clib_outbound_ip',
+			'clib_health_check',
 			'clib_setup_pages',
 			'clib_bulk_prepare',
 			'clib_bulk_apply',
@@ -308,6 +310,23 @@ class CLIB_Admin {
 			self::notice( __( 'Could not find this server\'s IP address: the address service did not answer. Try again in a minute, or ask your host for the server\'s outgoing IP address.', 'church-library' ), 'error' );
 		}
 		wp_safe_redirect( self::url( 'clib-settings' ) . '#clib-server-ip' );
+		exit;
+	}
+
+	/** Settings > Installation health > Run web checks: read-only; the result is shown on the settings page. */
+	public static function handle_health_check() {
+		self::guard( 'clib_health_check', 'manage_options' );
+		CLIB_Health::scan( true ); // Refresh the cached file scan too.
+		set_transient(
+			CLIB_Health::NET_PREFIX . get_current_user_id(),
+			array(
+				'time' => time(),
+				'rows' => CLIB_Health::web_checks(),
+			),
+			10 * MINUTE_IN_SECONDS
+		);
+		self::notice( __( 'Installation health check finished. See "Installation health" below.', 'church-library' ), 'info' );
+		wp_safe_redirect( self::url( 'clib-settings' ) . '#clib-health' );
 		exit;
 	}
 

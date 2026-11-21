@@ -3,7 +3,20 @@
 # nginx ignores this file; see README.md for the equivalent nginx rules.
 Options -Indexes
 
-<FilesMatch "\.(?i:php\d?|phtml|phar|inc|sql|md|txt|log|json|lock|xml|yml|yaml|dist|sh|ini|bak)$">
+# Hidden files and folders anywhere below this folder (.git, .github, .env ...),
+# which a copy made from a git clone brings with it. FilesMatch only sees the
+# file name, so a file such as .git/HEAD or .git/config needs a path rule.
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteRule (^|/)\. - [F,L]
+</IfModule>
+<IfModule !mod_rewrite.c>
+	<IfModule mod_alias.c>
+		RedirectMatch 403 /\.
+	</IfModule>
+</IfModule>
+
+<FilesMatch "\.(?i:php\d?|phtml|phar|inc|sql|md|txt|log|json|lock|xml|yml|yaml|dist|sh|ini|bak|orig|swp|env|zip|gz|tar)$">
 	<IfModule mod_authz_core.c>
 		Require all denied
 	</IfModule>
