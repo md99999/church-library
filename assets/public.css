@@ -97,3 +97,31 @@
 
 .clib-credit { font-size: 11px; color: #646970; margin: 6px 0 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .clib-footer-credit { display: block; margin-top: 24px; padding-top: 8px; border-top: 1px solid #dcdcde; }
+
+/* Reports: inventory checklist and missing data audit. */
+.clib .clib-report-note { color: #50575e; margin: 2px 0 8px; }
+.clib .clib-signoff { margin: 4px 0 10px; }
+.clib .clib-blank { display: inline-block; min-width: 16em; border-bottom: 1px solid currentColor; margin: 0 16px 0 4px; }
+.clib .clib-blank-short { min-width: 8em; }
+.clib .clib-tickbox { display: inline-block; width: 14px; height: 14px; border: 1.5px solid currentColor; border-radius: 2px; vertical-align: middle; }
+.clib .clib-report .clib-col-found, .clib .clib-report .clib-col-copies, .clib .clib-report .clib-col-count { text-align: center; white-space: nowrap; }
+.clib .clib-report .clib-col-item_code, .clib .clib-report .clib-col-call, .clib .clib-report .clib-col-barcode { white-space: nowrap; }
+.clib .clib-missing-summary .clib-report { max-width: 520px; }
+
+@media print {
+	@page {
+		margin: 12mm 10mm;
+		@bottom-right { content: counter(page) " / " counter(pages); font-size: 9pt; }
+	}
+	.clib .clib-report { font-size: 9pt; border-collapse: collapse; width: 100%; }
+	.clib .clib-report th, .clib .clib-report td { padding: 3px 4px; border: 1px solid #888; color: #000; font-size: 9pt; line-height: 1.3; }
+	.clib .clib-report thead { display: table-header-group; }
+	.clib .clib-report tr { break-inside: avoid; page-break-inside: avoid; }
+	.clib .clib-report a { color: #000; text-decoration: none; }
+	.clib .clib-report .clib-col-edit { display: none; }
+	.clib .clib-report .clib-col-found { width: 1%; }
+	.clib .clib-tickbox { width: 12px; height: 12px; border-color: #000; }
+	.clib .clib-report-section h2, .clib .clib-report-section h3 { break-after: avoid; page-break-after: avoid; }
+	.clib .clib-page-break { break-before: page; page-break-before: always; }
+	.clib .clib-scroll { overflow: visible !important; }
+}

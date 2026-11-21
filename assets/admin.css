@@ -76,3 +76,33 @@ tr.clib-overdue td { background: #fff1f1 !important; }
 .clib-secret { width: 100%; max-width: 36em; font-family: Consolas, Monaco, monospace; }
 .clib-secret-hint { display: block; }
 .clib-ip-list { margin: 6px 0 6px 1.5em; list-style: disc; }
+
+/* Reports: inventory checklist and missing data audit. */
+.clib-report-note { color: #50575e; margin: 2px 0 8px; }
+.clib-signoff { margin: 4px 0 10px; }
+.clib-blank { display: inline-block; min-width: 16em; border-bottom: 1px solid currentColor; margin: 0 16px 0 4px; }
+.clib-blank-short { min-width: 8em; }
+.clib-tickbox { display: inline-block; width: 14px; height: 14px; border: 1.5px solid currentColor; border-radius: 2px; vertical-align: middle; }
+.clib-report .clib-col-found, .clib-report .clib-col-copies, .clib-report .clib-col-count { text-align: center; white-space: nowrap; }
+.clib-report .clib-col-item_code, .clib-report .clib-col-call, .clib-report .clib-col-barcode { white-space: nowrap; }
+.clib-missing-summary .clib-report { max-width: 520px; }
+
+@media print {
+	@page {
+		margin: 12mm 10mm;
+		@bottom-right { content: counter(page) " / " counter(pages); font-size: 9pt; }
+	}
+	.clib-report { font-size: 9pt; border-collapse: collapse; width: 100%; }
+	.clib-report th, .clib-report td { padding: 3px 4px; border: 1px solid #888; color: #000; font-size: 9pt; line-height: 1.3; }
+	#wpcontent, #wpbody-content { padding-left: 0 !important; padding-right: 0 !important; }
+	.clib-wrap { margin: 0 !important; }
+	.clib-report thead { display: table-header-group; }
+	.clib-report tr { break-inside: avoid; page-break-inside: avoid; }
+	.clib-report a { color: #000; text-decoration: none; }
+	.clib-report .clib-col-edit { display: none; }
+	.clib-report .clib-col-found { width: 1%; }
+	.clib-tickbox { width: 12px; height: 12px; border-color: #000; }
+	.clib-report-section h2, .clib-report-section h3 { break-after: avoid; page-break-after: avoid; }
+	.clib-page-break { break-before: page; page-break-before: always; }
+	.clib-scroll { overflow: visible !important; }
+}

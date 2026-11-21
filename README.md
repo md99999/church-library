@@ -21,7 +21,10 @@ Deleting items and the *Delete all library data on uninstall* option erase data 
 - **Archive and delete** on the item view and edit pages. *Archive* marks an item inactive and hides it from the catalog, reports, lookups, duplicates and check out, keeping its record and history; restore it from *Catalog > Archived items*. *Delete* permanently removes the item and its loan history after a confirmation box that the server checks. An item with copies checked out cannot be archived or deleted.
 - **Locations**: church → building → room (each chosen from the List of Values and linked to its parent) → location ID. The location ID is free-form, so you can use an aisle-bay-shelf scheme such as `A-12-3`.
 - **Check out / check in** desk with borrower name and contact, due dates, multiple copies per item, overdue highlighting, return condition and full loan history. Status changes between *Checked In* and *Checked Out* automatically; *Not Available* is set by staff.
-- **Reports**: collection summary (by media type, church, building, status, condition, totals), currently checked out, overdue, circulation history by date range, and an inventory/shelf list sorted by location. Every report can be downloaded as CSV or printed.
+- **Reports**: collection summary (by media type, church, building, status, condition, totals), currently checked out, overdue, circulation history by date range, an inventory/shelf list sorted by location, an **Inventory Checklist** and a **Missing Data Audit**. Every report can be downloaded as CSV or printed.
+  - *Inventory Checklist* is a printable stock-taking sheet: one row per item with Item ID, Title, Creator/Author, Media Type, Call #, Building, Room, Copies, Barcode and an empty *Found* box to tick on paper, plus *Counted by* and *Date* lines. Filter by church, building, room, media type and status; sort by location, call #, title or Item ID; optionally start a new page for each room. The column headings repeat on every printed page, rows are never split across pages, and pages are numbered (page numbers need Chrome or Edge).
+  - *Missing Data Audit* counts how many items are missing each of: image (none set, or the media file was deleted), creator/author, publisher, ISBN/identifier, description, classification, church, building, room, call #, barcode and condition, then lists the items with the most gaps first and an *Edit* link for each. Filter by the missing field, church, building, room and media type.
+  - Archived items are left out of every report. Each run shows at most 5,000 rows; narrow the filters for more.
 - **List of Values** managed by admins: every dropdown (media types, music sub-categories, churches, buildings linked to a church, rooms linked to a building, classifications, liturgical uses, conditions and music difficulty levels) can be added to, renamed, reordered, hidden or deleted when unused. Starting values are seeded on activation.
 - **CSV import** for existing spreadsheets (save the sheet as *CSV UTF-8*). Headings such as `Barcode`, `Call #`, `Title`, `Author's Name`, `Classification` and `Cost` are recognised automatically, with preview mode and duplicate skipping.
 - **Full-width library pages** (Library - Settings > Page layout, on by default): the "Library - ..." pages use the theme's full-width / no-sidebar page template when it has one, and otherwise hide sidebar widget areas and widen the content. A template picked by hand in the page editor is never changed.
@@ -168,6 +171,11 @@ assets/                   CSS and JavaScript
 ```
 
 ## Changelog
+
+### 1.3.5
+- New report: **Inventory Checklist**, a printable stock-taking sheet with a *Found* box per item, *Counted by* / *Date* lines, filters (church, building, room, media type, status), sort by location, call #, title or Item ID, and an option to start a new page for each room. Printed pages repeat the column headings, keep each row whole and are numbered.
+- New report: **Missing Data Audit**, a count per field of items missing an image or catalog details, and a list of those items (most gaps first) with an *Edit* link. Filter by the missing field, church, building, room and media type.
+- Both reports also download as CSV, leave out archived items, and are on the front-end Reports page. Filters are checked against fixed lists or sanitized, every query is prepared, and a failed query is written to the Audit Log instead of being shown.
 
 ### 1.3.3
 - API key fields no longer pick up a browser's saved login password (which could replace or shorten a pasted key). The fields are wider, have a Show button to check a key before saving, and show the saved key's last four characters and length so you can confirm it was stored whole.
