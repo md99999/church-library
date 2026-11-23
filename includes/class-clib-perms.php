@@ -122,6 +122,16 @@ class CLIB_Perms {
 		return is_user_logged_in() && current_user_can( 'clib_view' );
 	}
 
+	/**
+	 * Can the current user see staff-only item data (barcode, cost, acquired
+	 * date, notes, inventory notes)? View-only roles (by default Subscriber)
+	 * cannot: the public catalog already treats these as staff data, and the
+	 * dashboard catalog follows the same rule.
+	 */
+	public static function can_see_staff_fields() {
+		return is_user_logged_in() && ( current_user_can( 'clib_circulate' ) || current_user_can( 'clib_manage_items' ) || current_user_can( 'clib_reports' ) );
+	}
+
 	/** Can the current visitor see borrower names? */
 	public static function can_see_borrowers() {
 		return current_user_can( 'clib_circulate' ) || ( CLIB_Settings::get( 'show_borrowers' ) && is_user_logged_in() && current_user_can( 'clib_view' ) );

@@ -73,7 +73,7 @@ class CLIB_Import {
 	 * still only ever stored as text and escaped on output.
 	 */
 	private static function unneutralise( $s ) {
-		if ( strlen( $s ) > 1 && "'" === $s[0] && in_array( $s[1], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+		if ( strlen( $s ) > 1 && "'" === $s[0] && CLIB_Util::csv_is_formula( substr( $s, 1 ) ) ) {
 			return substr( $s, 1 );
 		}
 		return $s;

@@ -44,6 +44,12 @@ $clib_fields    = array(
 	__( 'Cost', 'church-library' )              => null !== $clib_item->cost ? number_format_i18n( (float) $clib_item->cost, 2 ) : '',
 	__( 'Acquired', 'church-library' )          => CLIB_Util::fmt_date( $clib_item->acquired_date ),
 );
+// Barcode, cost, acquired date and the notes are staff data: view-only roles
+// (by default Subscriber) do not get them, matching the public catalog.
+$clib_staff_data = CLIB_Perms::can_see_staff_fields();
+if ( ! $clib_staff_data ) {
+	unset( $clib_fields[ __( 'Barcode', 'church-library' ) ], $clib_fields[ __( 'Cost', 'church-library' ) ], $clib_fields[ __( 'Acquired', 'church-library' ) ] );
+}
 if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 	$clib_fields[ __( 'Checked Out By', 'church-library' ) ] = implode( ', ', wp_list_pluck( $clib_active, 'borrower_name' ) );
 }
@@ -77,11 +83,12 @@ if ( CLIB_Perms::can_see_borrowers() && $clib_active ) {
 		</table>
 
 		<?php
-		foreach ( array(
-			__( 'Description', 'church-library' )     => $clib_item->description,
-			__( 'Notes', 'church-library' )           => $clib_item->notes,
-			__( 'Inventory Notes', 'church-library' ) => $clib_item->inventory_notes,
-		) as $clib_label => $clib_text ) :
+		$clib_texts = array( __( 'Description', 'church-library' ) => $clib_item->description );
+		if ( $clib_staff_data ) {
+			$clib_texts[ __( 'Notes', 'church-library' ) ]           = $clib_item->notes;
+			$clib_texts[ __( 'Inventory Notes', 'church-library' ) ] = $clib_item->inventory_notes;
+		}
+		foreach ( $clib_texts as $clib_label => $clib_text ) :
 			if ( '' === (string) $clib_text ) {
 				continue;
 			}

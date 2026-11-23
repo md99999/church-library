@@ -740,7 +740,7 @@ class CLIB_Items {
 	 */
 	public static function sideload_image( $url, $name, $title ) {
 		self::require_media();
-		$tmp = download_url( $url, 15 );
+		$tmp = self::download_image( $url );
 		if ( is_wp_error( $tmp ) ) {
 			return $tmp;
 		}
@@ -777,6 +777,42 @@ class CLIB_Items {
 			wp_delete_file( $tmp );
 		}
 		return $id;
+	}
+
+	/**
+	 * Download an image to a temporary file. Unlike download_url(), the transfer
+	 * stops one byte past MAX_IMAGE_BYTES (so an oversized or endless response
+	 * cannot fill the disk before the size check), redirects are capped, and
+	 * wp_safe_remote_get() re-checks every hop against internal addresses.
+	 *
+	 * @param string $url https URL built and host-checked by the caller.
+	 * @return string|WP_Error Temporary file path (the caller deletes it).
+	 */
+	private static function download_image( $url ) {
+		$refused = new WP_Error( 'clib_upload', __( 'No usable cover image was found.', 'church-library' ) );
+		if ( 'https' !== wp_parse_url( (string) $url, PHP_URL_SCHEME ) ) {
+			return $refused;
+		}
+		$tmp = wp_tempnam( 'clib-cover' );
+		if ( ! $tmp ) {
+			return new WP_Error( 'clib_upload', __( 'The image could not be processed.', 'church-library' ) );
+		}
+		$res = wp_safe_remote_get(
+			$url,
+			array(
+				'timeout'             => 15,
+				'redirection'         => 3,
+				'stream'              => true,
+				'filename'            => $tmp,
+				'limit_response_size' => self::MAX_IMAGE_BYTES + 1,
+				'user-agent'          => 'ChurchLibrary/' . CLIB_VERSION,
+			)
+		);
+		if ( is_wp_error( $res ) || 200 !== (int) wp_remote_retrieve_response_code( $res ) ) {
+			wp_delete_file( $tmp );
+			return $refused;
+		}
+		return $tmp;
 	}
 
 	/** Store library images in uploads/church-library/YYYY/MM. */

@@ -87,7 +87,41 @@ class CLIB_Privacy {
 	}
 
 	/**
-	 * Erase: returned loans are anonymised. Loans still out are kept (the item
+	 * Remove a borrower's name from the Audit Log entries of one item. Check-out
+	 * and check-in entries record "<Item ID> to <name> due <date>" and
+	 * "<Item ID> from <name>"; only those exact phrases are replaced, so other
+	 * text in the log is untouched. The name is compared in PHP, never put in SQL.
+	 *
+	 * @param int    $item_id Item the loan was for.
+	 * @param string $name    Borrower name as stored on the loan.
+	 */
+	private static function scrub_audit( $item_id, $name ) {
+		global $wpdb;
+		$name    = sanitize_text_field( $name ); // The form CLIB_Audit::log() wrote it in.
+		$removed = __( '[removed]', 'church-library' );
+		if ( '' === $name || $removed === $name || $item_id <= 0 ) {
+			return;
+		}
+		$t    = CLIB_DB::table( 'audit' );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, action, details FROM $t WHERE object_type = 'item' AND object_id = %d AND action IN ( 'checkout', 'checkin' )", $item_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- fixed table name.
+		foreach ( (array) $rows as $row ) {
+			$details = (string) $row->details;
+			if ( 'checkout' === $row->action ) {
+				$clean = str_replace( ' to ' . $name . ' due ', ' to ' . $removed . ' due ', $details );
+			} else {
+				// The name ends a check-in entry; match it there only, so "Ann" never touches "Anna".
+				$tail  = ' from ' . $name;
+				$clean = substr( $details, -strlen( $tail ) ) === $tail ? substr( $details, 0, -strlen( $tail ) ) . ' from ' . $removed : $details;
+			}
+			if ( $clean !== $details ) {
+				$wpdb->update( $t, array( 'details' => $clean ), array( 'id' => (int) $row->id ), array( '%s' ), array( '%d' ) );
+			}
+		}
+	}
+
+	/**
+	 * Erase: returned loans are anonymised, along with the borrower's name in the
+	 * Audit Log entries for those loans. Loans still out are kept (the item
 	 * has to come back) and reported as retained.
 	 */
 	public static function erase( $email, $page = 1 ) {
@@ -119,6 +153,7 @@ class CLIB_Privacy {
 					array( '%s', '%s', '%s', '%d', '%s', '%s' ),
 					array( '%d' )
 				);
+				self::scrub_audit( (int) $r->item_id, (string) $r->borrower_name );
 				$removed = true;
 			}
 			if ( count( $rows ) < self::PER_PAGE ) {

@@ -19,7 +19,7 @@ class CLIB_Audit {
 			$candidate = filter_var( wp_unslash( $_SERVER['REMOTE_ADDR'] ), FILTER_VALIDATE_IP ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			$ip        = $candidate ? $candidate : '';
 		}
-		$wpdb->insert(
+		$ok = $wpdb->insert(
 			CLIB_DB::table( 'audit' ),
 			array(
 				'created_at'  => CLIB_Util::now(),
@@ -32,6 +32,11 @@ class CLIB_Audit {
 			),
 			array( '%s', '%d', '%s', '%s', '%d', '%s', '%s' )
 		);
+		if ( false === $ok ) {
+			// A lost audit entry must not pass silently. The server error log gets
+			// the action name only: no details, personal data or database error text.
+			error_log( 'Church Library: could not write an audit log entry (action: ' . substr( sanitize_key( $action ), 0, 32 ) . ').' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
 	}
 
 	/**

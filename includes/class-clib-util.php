@@ -248,13 +248,30 @@ class CLIB_Util {
 		return substr( $value, 0, $max );
 	}
 
+	/** Characters that make a spreadsheet treat a cell as a formula (OWASP CSV injection list). */
+	const CSV_TRIGGERS = array( '=', '+', '-', '@', "\t", "\r", "\n" );
+
+	/**
+	 * Does a cell start a formula? Checks the first character and, because some
+	 * spreadsheet imports trim leading spaces, the first character after any
+	 * leading spaces too (" =HYPERLINK(...)").
+	 */
+	public static function csv_is_formula( $value ) {
+		$value = (string) $value;
+		if ( '' === $value ) {
+			return false;
+		}
+		if ( in_array( $value[0], self::CSV_TRIGGERS, true ) ) {
+			return true;
+		}
+		$trimmed = ltrim( $value, ' ' );
+		return '' !== $trimmed && $trimmed !== $value && in_array( $trimmed[0], self::CSV_TRIGGERS, true );
+	}
+
 	/** Neutralise spreadsheet formula injection for CSV export. */
 	public static function csv_safe( $value ) {
 		$value = (string) $value;
-		if ( '' !== $value && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
-			$value = "'" . $value;
-		}
-		return $value;
+		return self::csv_is_formula( $value ) ? "'" . $value : $value;
 	}
 
 	/** Read a POST field. */

@@ -40,6 +40,8 @@ $clib_args = array(
 	'order'         => CLIB_Util::enum( CLIB_Util::get( 'order' ), array( 'asc', 'desc' ), 'asc' ),
 	'page'          => CLIB_Util::int( CLIB_Util::get( 'paged', 1 ), 1, 100000 ),
 	'per_page'      => (int) CLIB_Settings::get( 'per_page' ),
+	// Barcodes are staff data: view-only roles cannot search by them (same rule as the public catalog).
+	'search_barcode' => CLIB_Perms::can_see_staff_fields(),
 );
 list( $clib_rows, $clib_total ) = CLIB_Items::search( $clib_args );
 if ( $clib_args['archived'] ) {
