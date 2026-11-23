@@ -76,7 +76,7 @@ There is no build step: no compiler, bundler or dependencies. The plugin is the 
 From a clone of the repository:
 
 ```bash
-git archive --format=zip --prefix=church-library/ -o ../church-library-1.4.0.zip HEAD
+git archive --format=zip --prefix=church-library/ -o ../church-library-1.4.1.zip HEAD
 ```
 
 (Change the version number to match the `Version:` line in `church-library.php`.) This packs the last commit, not uncommitted edits, and `.gitattributes` keeps development-only files (`.gitattributes`, `.gitignore`, `.github/`, `tools/`) out of the zip. It works the same in Git Bash, PowerShell or a Linux/macOS terminal.
@@ -173,14 +173,15 @@ The plugin was built to be safe on a public church website:
 - **Output escaping**: everything is escaped at output (`esc_html`, `esc_attr`, `esc_url`, `esc_textarea`). Admin notices are stored server-side per user and never reflected from the URL. Admin JavaScript inserts remote data with `textContent` only.
 - **Uploads**: images must be JPG, PNG, GIF or WebP, are checked by extension, real MIME type (`wp_check_filetype_and_ext`) and image header (`getimagesize`), are limited to 5 MB, and are then **re-encoded** through the WordPress image editor. Re-encoding strips EXIF/GPS data and anything appended to the file. Files are stored by `wp_handle_upload()`, which sanitises names and prevents path traversal, in `uploads/church-library/`. That folder gets an `index.php` and an `.htaccess` that disables script execution.
 - **CSV import** accepts only `.csv` text files up to 5 MB / 5,000 rows, rejects binary or zipped content, and reads the temporary file in place without moving it anywhere web-accessible.
-- **CSV export** neutralises spreadsheet formula injection (`=`, `+`, `-`, `@`).
-- **API keys** (Google Books, Discogs) are validated against each service's key format, never shown again on the settings page, and sent only over https to the fixed address of their own service, in a request header where the service allows it (Google Books `X-goog-api-key`, Discogs `Authorization`). Remote data is re-validated field by field: ids and poster names must match strict patterns, cover URLs are rebuilt server-side on allow-listed hosts, and text is sanitised before it reaches the browser.
+- **CSV export** neutralises spreadsheet formula injection: a cell that starts with `=`, `+`, `-`, `@`, a tab or a line break, even after leading spaces, gets a leading `'`. Import removes that quote again, so an export can be re-imported unchanged.
+- **API keys** (Google Books, Discogs) are validated against each service's key format, never shown again on the settings page, and sent only over https to the fixed address of their own service, in a request header where the service allows it (Google Books `X-goog-api-key`, Discogs `Authorization`). A request that carries a key never follows a redirect, because WordPress would resend the header to whatever host the redirect names. Remote data is re-validated field by field: ids and poster names must match strict patterns, cover URLs are rebuilt server-side on allow-listed hosts, and text is sanitised before it reaches the browser.
 - **Destructive actions** (delete, archive, merge, Item ID fixes) each need an action-bound nonce, the matching capability, and, for delete, merge and fixes, a confirmation box checked on the server. Merges, ID fixes and deletes run inside database transactions with row locks and roll back on any failure.
-- **Outbound requests**: the lookup can be turned off in settings. It uses `wp_safe_remote_get()` with short timeouts and a size limit, is limited to 30 lookups per user per 5 minutes, and caches results. Cover images are never downloaded from a URL sent by the browser: the server rebuilds the URL from a numeric cover ID and checks the host against the provider's allow list.
+- **Outbound requests**: the lookup can be turned off in settings. It uses `wp_safe_remote_get()` with short timeouts and a size limit, is limited to 30 lookups per user per 5 minutes, and caches results. Cover images are never downloaded from a URL sent by the browser: the server rebuilds the URL from a numeric cover ID and checks the host against the provider's allow list. The download stops at 5 MB plus one byte, follows at most 3 redirects, and every hop is checked against internal addresses.
 - **Race conditions**: Item IDs are allocated atomically (`LAST_INSERT_ID(expr)`), and check-outs lock the item row so two desks cannot lend the last copy at the same time.
 - **Direct access**: every PHP file exits unless loaded by WordPress, every folder has a "silence is golden" `index.php`, every folder of PHP files has a deny-all `.htaccess`, `assets/` serves only CSS, JS and images, and the top-level `.htaccess` refuses hidden paths (`.git/`, `.github/`, `.env`) and non-asset files (`.md`, `.sql`, `.json`, `.log`, `.zip` ...) on Apache. This holds even if someone uploads a raw repository copy instead of a release zip.
 - **Installation health check** (*Library - Settings*, administrators only): checks the plugin folder name, other copies, a `.git` folder, files that are not part of the release, missing `index.php` / `.htaccess` / `ABSPATH` guards, PHP, WordPress and database versions, the library tables, InnoDB and schema version, the image upload folder, HTTPS, on-screen PHP errors and the lookup configuration. **Run web checks** (nonce-protected POST) also asks the site whether it serves `README.md` and `.git/HEAD`, and tests an outgoing https request to api.wordpress.org. All checks only read, and every result is escaped when shown.
-- **Audit log** with user, time and IP (`REMOTE_ADDR` only, as forwarded headers can be spoofed).
+- **Audit log** with user, time and IP (`REMOTE_ADDR` only, as forwarded headers can be spoofed). A failed write is reported to the server's PHP error log (action name only). *Tools > Erase Personal Data* also removes the borrower's name from the check-out and check-in entries of the anonymised loans.
+- **Staff-only data**: barcode, cost, acquired date, notes and inventory notes are shown only to roles that can check out, edit items or run reports, on the public catalog and in the dashboard alike. View-only roles (by default Subscriber) cannot see them or search by barcode.
 - **Uninstall** removes capabilities. It only drops tables if *Delete all library data on uninstall* is ticked, which an administrator can only turn on by ticking a warning box and typing `DELETE` (checked on the server behind a nonce and `manage_options`, and recorded in the audit log).
 
 ### nginx
@@ -221,6 +222,15 @@ SECURITY.md               How to report a vulnerability
 ```
 
 ## Changelog
+
+### 1.4.1
+OWASP Top 10 review. No change for staff; the fixes below close gaps found in the review.
+- **Access control (A01):** the dashboard item page showed Barcode, Cost, Acquired, Notes and Inventory Notes to view-only roles (by default Subscriber), and the dashboard catalog let them search by barcode. Those are now limited to roles with check out, edit items or reports, the same rule the public catalog already used for barcodes.
+- **Credentials (A02/A07):** a lookup request carrying an API key or token (Google Books `X-goog-api-key`, Discogs `Authorization`) no longer follows HTTP redirects, since WordPress resends request headers unchanged to any redirect target, including another host.
+- **Privacy / logging (A04/A09):** *Erase Personal Data* anonymised loans but left the borrower's name in the Audit Log's check-out and check-in entries. Those names are now replaced with `[removed]` too. A failed audit-log write is now reported in the PHP error log instead of being dropped silently.
+- **SSRF / resource use (A10):** cover images are downloaded with `wp_safe_remote_get()` and stop at 5 MB plus one byte with at most 3 redirects, instead of `download_url()`, which downloads the whole response before the size check.
+- **Injection (A03):** CSV export now also neutralises formulas that start after leading spaces or with a line break (`" =HYPERLINK(...)"`), and import reverses that exactly.
+- New test `tools/tests/security-hardening-test.php` (50 checks).
 
 ### 1.4.0
 - **Building** and **Room** are now shown to logged-in users only. On the public catalog, guests (not logged in) no longer see them on the item page, the Building filter is removed from the search form, and a `clib_building` value in a guest's URL is ignored (it is not read, not used in the query and not copied into page links), so a guest cannot use the filter to work out where an item is kept. The values are also removed from the item data before the page is drawn for a guest. Church and Location ID are still shown to everyone. Staff screens, reports and logged-in users are unchanged. The How To page wording follows the same rule.

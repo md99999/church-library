@@ -334,16 +334,30 @@ class CLIB_Lookup {
 	/** Plain-language reason set by a provider for its last failure ('' = use the generic text). */
 	public static $last_problem = '';
 
+	/**
+	 * Request headers that carry a credential. WordPress's HTTP library resends
+	 * every request header, unchanged, to wherever a redirect points, including
+	 * another host, so requests that carry one of these never follow redirects.
+	 */
+	const CREDENTIAL_HEADERS = array( 'authorization', 'proxy-authorization', 'x-goog-api-key', 'x-api-key', 'cookie' );
+
 	/** Shared HTTP helper for providers: https only, small, short timeout. Returns the body or null. */
 	public static function http_body( $url, array $headers = array(), $accept = 'application/json' ) {
 		if ( 'https' !== wp_parse_url( (string) $url, PHP_URL_SCHEME ) ) {
 			return null;
 		}
+		$has_credential = false;
+		foreach ( array_keys( $headers ) as $name ) {
+			if ( in_array( strtolower( trim( (string) $name ) ), self::CREDENTIAL_HEADERS, true ) ) {
+				$has_credential = true;
+				break;
+			}
+		}
 		$res = wp_safe_remote_get(
 			$url,
 			array(
 				'timeout'             => 8,
-				'redirection'         => 2,
+				'redirection'         => $has_credential ? 0 : 2, // A key or token is never sent on to a redirect target.
 				'limit_response_size' => 1048576,
 				// Services ask for an identifying User-Agent with a contact URL; no personal data.
 				'user-agent'          => 'ChurchLibrary/' . CLIB_VERSION . ' ( https://github.com/md99999/church-library )',
